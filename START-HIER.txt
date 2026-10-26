@@ -1,0 +1,21 @@
+schului
+-------
+
+schului.exe startet den Editor für Lehrkräfte.
+start-beispiel.cmd startet eine kurze Lernumgebung für Lernende.
+start-inspector.cmd öffnet den Draw-Inspector.
+
+Im Editor:
+- Ordnersymbol: Lernumgebung öffnen.
+- Speichersymbol: als .schului-Datei speichern.
+- Auge: Lernansicht ansehen.
+- Baum: Ziele in Draw erkunden und ihren JSON-Pfad kopieren.
+- Dreieck: die aktuelle Lernumgebung in Draw starten.
+- Text anklicken: bearbeiten oder als interaktiven Begriff verknüpfen.
+
+LibreOffice muss auf dem Rechner installiert sein. Online-Übungen benötigen
+Internet und Microsoft Edge WebView2. Der gesamte Programmordner muss zusammen
+bleiben; die EXE allein genügt nicht.
+
+Aktueller Stand: erste Version mit LibreOffice Draw als unterstützter Anwendung.
+Den neuen Ablauf vor dem Unterricht auf einem Lernenden-PC ausprobieren.
