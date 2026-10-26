@@ -1,0 +1,35 @@
+name: schului
+description: "Lernumgebungen unter Windows erstellen und interaktiv in echten Anwendungen lernen."
+publish_to: none
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.13.0
+
+dependencies:
+  file_selector: ^1.1.0
+  flutter:
+    sdk: flutter
+  webview_windows: 0.4.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  melos: ^8.9.0
+
+flutter:
+  uses-material-design: true
+
+melos:
+  sdkPath: .fvm/flutter_sdk
+  useRootAsPackage: true
+  command:
+    version:
+      workspaceChangelog: false
+      versionPrivatePackages: true
+  scripts:
+    format: fvm dart format --output=none --set-exit-if-changed lib test
+    analyze: fvm flutter analyze
+    test: fvm flutter test
+    build: fvm flutter build windows --release
