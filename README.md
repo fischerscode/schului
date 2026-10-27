@@ -102,11 +102,21 @@ The picker visibly outlined the File menu without opening it. The saved file is
 `build/notepad-e2e.schului` (machine-specific test data, excluded from Git).
 
 The test exposed the learner window's tool-window style; it now uses a primary
-app-window style and is discoverable while waiting for window selection. The
-runtime started and correctly reported multiple matching Notepad windows.
-The final window-selection and learner-hover checks remain pending: Computer
-Use lost desktop access with `GetCursorPos: access denied`. Normal key presses
-worked in Flutter fields, while automated text injection/Ctrl+A did not;
+app-window style and is discoverable while waiting for window selection. After
+desktop access was restored, the remaining end-to-end steps also passed:
+
+- The runtime reported two matching Notepad windows and offered explicit selection.
+- Selecting the blank test window connected that exact window and displayed the
+  instruction/application layout, without selecting the pre-existing user document.
+- Hovering the authored "Datei" term produced a yellow outline around Notepad's
+  actual File menu. Moving away removed the outline.
+
+This completes the requested authoring/capture/save/reload/runtime-hover flow
+with an already open Notepad window. Cold-starting the packaged Notepad executable,
+other apps, other DPI settings and lifecycle cases are separate checks.
+Computer Use temporarily lost desktop access (`GetCursorPos: access denied`),
+requiring the user to activate the desktop before continuation. Normal key
+presses worked in Flutter fields, while automated text injection/Ctrl+A did not;
 native file-dialog text input did work. This is an automation observation, not a
 verified diagnosis of physical-keyboard behavior.
 
