@@ -19,6 +19,7 @@ ThemeData schulzeugTheme() {
       error: Color(0xFFD93025),
     ),
     textTheme: const TextTheme(
+      bodyLarge: TextStyle(fontSize: 16, height: 24 / 16),
       bodyMedium: TextStyle(fontSize: 14, height: 20 / 14),
       titleMedium: TextStyle(
         fontSize: 16,
@@ -69,6 +70,14 @@ ThemeData schulzeugTheme() {
       color: Color(0xFFD9D9DF),
       thickness: 1,
       space: 1,
+    ),
+    popupMenuTheme: PopupMenuThemeData(
+      color: const Color(0xFFFAFAFA),
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Color(0xFFD9D9DF)),
+      ),
     ),
     dialogTheme: DialogThemeData(
       backgroundColor: const Color(0xFFFAFAFA),

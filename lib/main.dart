@@ -84,6 +84,7 @@ class SchoolApp extends StatelessWidget {
       (_, final lesson?) => SessionView(
         role: role,
         lessons: lesson.steps,
+        title: lesson.title,
         application: lesson.application,
       ),
       _ => const Scaffold(
@@ -99,10 +100,12 @@ class SessionView extends StatefulWidget {
     required this.role,
     required this.lessons,
     required this.application,
+    this.title,
   });
   final String role;
   final List<LessonStep> lessons;
   final TargetApplication application;
+  final String? title;
   @override
   State<SessionView> createState() => _SessionViewState();
 }
@@ -197,75 +200,80 @@ class _SessionViewState extends State<SessionView> {
   Widget build(BuildContext context) {
     if (widget.role == 'overlay') return overlay(context);
     if (widget.role == 'hint') return hint(context);
+    final failure = error ?? (state['startupError'] as String? ?? '');
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: LessonContent(
-                lessons: widget.lessons,
-                onHint: () => command('hint', true),
-                onHover: hover,
-                onSection: (section) => command('step', section),
-              ),
-            ),
-            if (error != null ||
-                (state['startupError'] as String? ?? '').isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Text(
-                  error ?? state['startupError'] as String,
-                  style: const TextStyle(color: Colors.red),
-                ),
-              ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 12, 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      connected
-                          ? '${widget.application.name} ist verbunden.'
-                          : 'Zielsoftware verbinden …',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF52627C),
-                      ),
+        child: LessonContent(
+          title: widget.title,
+          lessons: widget.lessons,
+          onHint: () => command('hint', true),
+          onHover: hover,
+          onSection: (section) => command('step', section),
+          notice: !connected || failure.isNotEmpty
+              ? Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Semantics(
+                    liveRegion: true,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                failure.isNotEmpty
+                                    ? failure
+                                    : '${widget.application.name} verbinden …',
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (!connected) ...[
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              OutlinedButton(
+                                onPressed: () => command('start'),
+                                child: const Text('Software starten'),
+                              ),
+                              if (widget.application is WindowsApplication)
+                                TextButton(
+                                  onPressed: selectWindow,
+                                  child: const Text('Fenster auswählen'),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                  PopupMenuButton<String>(
-                    tooltip: 'Lernumgebung',
-                    onSelected: (action) => switch (action) {
-                      'about' => showSchuluiAboutDialog(context),
-                      _ => command(action),
-                    },
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(
-                        value: 'start',
-                        child: Text('Software starten / erneut verbinden'),
-                      ),
-                      PopupMenuItem(
-                        value: 'exit',
-                        child: Text('Lernumgebung beenden'),
-                      ),
-                      PopupMenuItem(
-                        value: 'about',
-                        child: Text('Über dieses Programm'),
-                      ),
-                    ],
-                  ),
-                  if (!connected && widget.application is WindowsApplication)
-                    IconButton(
-                      tooltip: 'Fenster auswählen',
-                      onPressed: selectWindow,
-                      icon: const Icon(Icons.window_outlined),
-                    ),
-                ],
+                )
+              : null,
+          actions: PopupMenuButton<String>(
+            tooltip: 'Lernumgebung',
+            onSelected: (action) => switch (action) {
+              'about' => showSchuluiAboutDialog(context),
+              _ => command(action),
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'start', child: Text('Erneut verbinden')),
+              PopupMenuItem(value: 'exit', child: Text('Lernumgebung beenden')),
+              PopupMenuItem(
+                value: 'about',
+                child: Text('Über dieses Programm'),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -300,9 +308,9 @@ class _SessionViewState extends State<SessionView> {
   }
 
   Widget hint(BuildContext context) => Scaffold(
-    backgroundColor: const Color(0xFFFFF8E1),
+    backgroundColor: const Color(0xFFFAFAFA),
     body: Padding(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -310,10 +318,10 @@ class _SessionViewState extends State<SessionView> {
             children: [
               const Icon(Icons.lightbulb_outline),
               const SizedBox(width: 8),
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'Ein Tipp für dich',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  'Tipp',
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
               IconButton(
@@ -327,7 +335,7 @@ class _SessionViewState extends State<SessionView> {
             child: SingleChildScrollView(
               child: Text(
                 widget.lessons[index].hint,
-                style: const TextStyle(fontSize: 16, height: 1.4),
+                style: Theme.of(context).textTheme.bodyLarge,
               ),
             ),
           ),

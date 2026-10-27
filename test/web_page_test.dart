@@ -74,7 +74,7 @@ void main() {
       calls.lastWhere((c) => c.method == 'webPage').arguments,
       (sampleSteps[4].content.single as LessonActivity).toWebPageRequest(),
     );
-    expect(find.text('Abschnitt 5 von 7'), findsOneWidget);
+    expect(find.text('5 / 7'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });

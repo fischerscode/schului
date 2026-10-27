@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Redesign learner reading with compact numbered sections, a shared navigation
+  and reading-position bar, contextual tips and direct connection recovery.
+  Preserve continuous scrolling, exact hover targets and the application split.
 - Show the actual app version/build, GitHub link and offline imprint/privacy
   information in the shared teacher and learner About dialog.
 - Add GitHub Actions checks for formatting, analysis, Flutter/native tests and

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'lesson_model.dart';
 import '../src/windows_bridge.dart';
@@ -11,12 +12,17 @@ class LessonContent extends StatefulWidget {
     required this.lessons,
     this.onActivity,
     this.onHint,
+    this.title,
+    this.notice,
+    this.actions,
   });
   final ValueChanged<LessonLink?> onHover;
   final ValueChanged<int> onSection;
   final List<LessonStep> lessons;
   final ValueChanged<LessonActivity>? onActivity;
   final VoidCallback? onHint;
+  final String? title;
+  final Widget? notice, actions;
   @override
   State<LessonContent> createState() => _LessonContentState();
 }
@@ -51,8 +57,7 @@ class _LessonContentState extends State<LessonContent> {
       final section =
           sectionKeys[i].currentContext?.findRenderObject() as RenderBox?;
       if (section != null &&
-          section.localToGlobal(Offset.zero).dy <=
-              origin + box.size.height * .4) {
+          section.localToGlobal(Offset.zero).dy <= origin + 16) {
         next = i;
       }
     }
@@ -101,6 +106,16 @@ class _LessonContentState extends State<LessonContent> {
                   }
                 },
                 child: Focus(
+                  onKeyEvent: (node, event) {
+                    if (event is KeyDownEvent &&
+                        (event.logicalKey == LogicalKeyboardKey.enter ||
+                            event.logicalKey == LogicalKeyboardKey.space)) {
+                      hovered = span;
+                      widget.onHover(span);
+                      return KeyEventResult.handled;
+                    }
+                    return KeyEventResult.ignored;
+                  },
                   onFocusChange: (focused) {
                     if (focused) {
                       hovered = span;
@@ -110,16 +125,44 @@ class _LessonContentState extends State<LessonContent> {
                       widget.onHover(null);
                     }
                   },
-                  child: Text(
-                    span.text,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      height: 1.5,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF1D4ED8),
-                      decoration: TextDecoration.underline,
-                      decorationColor: Color(0xFF93B4F4),
-                    ),
+                  child: Builder(
+                    builder: (context) {
+                      final focus = Focus.of(context);
+                      return Semantics(
+                        button: true,
+                        onTap: focus.requestFocus,
+                        child: GestureDetector(
+                          excludeFromSemantics: true,
+                          onTap: focus.requestFocus,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 2),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(
+                                width: 2,
+                                color: focus.hasFocus
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Colors.transparent,
+                              ),
+                            ),
+                            child: Text(
+                              span.text,
+                              style: Theme.of(context).textTheme.bodyLarge
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .primary,
+                                    decoration: TextDecoration.underline,
+                                    decorationColor: Theme.of(context)
+                                        .colorScheme
+                                        .primary,
+                                  ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ).maybeTooltip(span.help),
@@ -127,11 +170,11 @@ class _LessonContentState extends State<LessonContent> {
           },
       ],
     ),
-    style: const TextStyle(fontSize: 18, height: 1.5, color: Color(0xFF25324A)),
+    style: Theme.of(context).textTheme.bodyLarge,
   );
 
   Widget block(LessonBlock block) => switch (block) {
-    LessonActivity() => FilledButton.icon(
+    LessonActivity() => OutlinedButton.icon(
       onPressed: () async {
         widget.onHover(null);
         if (widget.onActivity case final action?) {
@@ -164,7 +207,7 @@ class _LessonContentState extends State<LessonContent> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('•  ', style: TextStyle(fontSize: 18, height: 1.5)),
+                Text('•  ', style: Theme.of(context).textTheme.bodyLarge),
                 Expanded(child: paragraph(item)),
               ],
             ),
@@ -174,65 +217,99 @@ class _LessonContentState extends State<LessonContent> {
   };
   @override
   Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       Expanded(
         child: LayoutBuilder(
           builder: (context, constraints) => Scrollbar(
             controller: controller,
-            thumbVisibility: true,
             child: SingleChildScrollView(
               key: viewport,
               controller: controller,
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (widget.title case final title?) ...[
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+                      child: Semantics(
+                        header: true,
+                        child: Text(
+                          title,
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                      ),
+                    ),
+                    const Divider(),
+                  ],
+
                   for (var i = 0; i < widget.lessons.length; i++)
                     Container(
                       key: sectionKeys[i],
-                      decoration: const BoxDecoration(
+                      // Leave enough trailing room to align the final heading
+                      // with the viewport when navigating to the last section.
+                      constraints: i == widget.lessons.length - 1
+                          ? BoxConstraints(minHeight: constraints.maxHeight)
+                          : null,
+                      decoration: BoxDecoration(
                         border: Border(
-                          bottom: BorderSide(color: Color(0xFFDCE4F2)),
-                        ),
-                      ),
-                      padding: const EdgeInsets.fromLTRB(24, 24, 28, 24),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          minHeight: (constraints.maxHeight - 48).clamp(
-                            0,
-                            double.infinity,
+                          left: BorderSide(
+                            width: 2,
+                            color: i == current
+                                ? Theme.of(context).colorScheme.primary
+                                : Colors.transparent,
+                          ),
+                          bottom: BorderSide(
+                            color: Theme.of(context).colorScheme.outlineVariant,
                           ),
                         ),
-                        child: IntrinsicHeight(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                      ),
+                      padding: const EdgeInsets.fromLTRB(20, 20, 24, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                widget.lessons[i].title,
-                                style: Theme.of(context).textTheme.headlineSmall
-                                    ?.copyWith(fontWeight: FontWeight.w800),
-                              ),
-                              const SizedBox(height: 24),
-                              Expanded(
-                                child: Center(
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.stretch,
-                                    children: [
-                                      for (final item
-                                          in widget.lessons[i].content)
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                            bottom: 16,
-                                          ),
-                                          child: block(item),
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                  top: 2,
+                                  right: 12,
+                                ),
+                                child: ExcludeSemantics(
+                                  child: Text(
+                                    '${i + 1}'.padLeft(2, '0'),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelMedium
+                                        ?.copyWith(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant,
                                         ),
-                                    ],
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Semantics(
+                                  header: true,
+                                  child: Text(
+                                    widget.lessons[i].title,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium,
                                   ),
                                 ),
                               ),
                             ],
                           ),
-                        ),
+                          const SizedBox(height: 12),
+                          for (final item in widget.lessons[i].content)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: block(item),
+                            ),
+                        ],
                       ),
                     ),
                 ],
@@ -241,33 +318,79 @@ class _LessonContentState extends State<LessonContent> {
           ),
         ),
       ),
-      Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-        child: Row(
+      if (widget.notice case final notice?)
+        ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * .4,
+          ),
+          child: SingleChildScrollView(child: notice),
+        ),
+      Material(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            if (widget.onHint != null)
-              IconButton(
-                onPressed: widget.onHint,
-                tooltip: 'Tipp anzeigen',
-                icon: const Icon(Icons.lightbulb_outline),
+            const Divider(),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: current > 0 ? () => go(current - 1) : null,
+                    icon: const Icon(Icons.arrow_upward),
+                    tooltip: 'Vorheriger Abschnitt',
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Semantics(
+                            label:
+                                'Abschnitt ${current + 1} von ${widget.lessons.length}',
+                            child: ExcludeSemantics(
+                              child: Text(
+                                '${current + 1} / ${widget.lessons.length}',
+                                textAlign: TextAlign.center,
+                                style: Theme.of(context).textTheme.labelLarge,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          ExcludeSemantics(
+                            child: LinearProgressIndicator(
+                              value: (current + 1) / widget.lessons.length,
+                              minHeight: 2,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  IconButton.filled(
+                    onPressed: current < widget.lessons.length - 1
+                        ? () => go(current + 1)
+                        : null,
+                    icon: Icon(
+                      Icons.arrow_downward,
+                      color: current < widget.lessons.length - 1
+                          ? Theme.of(context).colorScheme.onPrimary
+                          : null,
+                    ),
+                    tooltip: 'Nächster Abschnitt',
+                  ),
+                  if (widget.onHint != null &&
+                      widget.lessons[current].hint.trim().isNotEmpty)
+                    IconButton(
+                      onPressed: widget.onHint,
+                      tooltip: 'Tipp anzeigen',
+                      icon: const Icon(Icons.lightbulb_outline),
+                    ),
+                  ?widget.actions,
+                ],
               ),
-            IconButton(
-              onPressed: current > 0 ? () => go(current - 1) : null,
-              icon: const Icon(Icons.arrow_upward),
-              tooltip: 'Vorheriger Abschnitt',
-            ),
-            Expanded(
-              child: Text(
-                'Abschnitt ${current + 1} von ${widget.lessons.length}',
-                textAlign: TextAlign.center,
-              ),
-            ),
-            IconButton(
-              onPressed: current < widget.lessons.length - 1
-                  ? () => go(current + 1)
-                  : null,
-              icon: const Icon(Icons.arrow_downward),
-              tooltip: 'Nächster Abschnitt',
             ),
           ],
         ),

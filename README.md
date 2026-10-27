@@ -71,6 +71,13 @@ Use quotes around paths containing spaces. Learner menus offer reconnect, exit
 and application information. The teacher editor provides **Ziele erkunden** for
 inspection and diagnostics.
 
+Learners read compact numbered sections in a continuous scroll. The shared
+bottom bar tracks the current reading position (not task completion), moves
+between sections and offers a tip only when that section contains one. Target
+links respond to hover, keyboard focus and activation. Connection failures show
+direct start and window-selection actions. The teacher preview uses the same
+reading layout.
+
 The runtime reuses a uniquely matching open window or starts the configured
 executable with separately quoted arguments, without a command shell. Matching
 uses the full executable path and optional class/title filters, not a global

@@ -644,6 +644,7 @@ class _TeacherViewState extends State<TeacherView> {
                       ? ColoredBox(
                           color: Colors.white,
                           child: LessonContent(
+                            title: document.title,
                             key: ValueKey(document),
                             lessons: document.steps,
                             onHover: (_) {},
