@@ -111,7 +111,6 @@ class _SessionViewState extends State<SessionView> {
   Map<String, dynamic> state = {};
   String? error;
   bool busy = false;
-  bool inspectorOpen = false;
   int get index =>
       (state['step'] as int? ?? 0).clamp(0, widget.lessons.length - 1);
   bool get connected => state['connected'] == true;
@@ -167,7 +166,7 @@ class _SessionViewState extends State<SessionView> {
   }
 
   Future<void> refresh() async {
-    if (busy || inspectorOpen) return;
+    if (busy) return;
     busy = true;
     try {
       final value = await bridge.invokeMapMethod<String, dynamic>('state');
@@ -180,24 +179,6 @@ class _SessionViewState extends State<SessionView> {
     } finally {
       busy = false;
     }
-  }
-
-  Future<void> openInspector() async {
-    hover(null);
-    await command('selectNode', '');
-    if (!mounted) return;
-    inspectorOpen = true;
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute(
-        builder: (_) => InspectorView(
-          showLessonReturn: true,
-          applicationName: widget.application.name,
-        ),
-      ),
-    );
-    inspectorOpen = false;
-    await command('selectNode', '');
-    await command('inspector', false);
   }
 
   Future<void> selectWindow() async {
@@ -256,7 +237,6 @@ class _SessionViewState extends State<SessionView> {
                   PopupMenuButton<String>(
                     tooltip: 'Lernumgebung',
                     onSelected: (action) => switch (action) {
-                      'discoverPaths' => openInspector(),
                       'about' => showAboutDialog(
                         context: context,
                         applicationName: 'schului',
@@ -264,22 +244,9 @@ class _SessionViewState extends State<SessionView> {
                       _ => command(action),
                     },
                     itemBuilder: (_) => const [
-                      // Temporary shortcut while discovering lesson targets.
-                      PopupMenuItem(
-                        value: 'discoverPaths',
-                        child: Text('Pfade entdecken (Inspector)'),
-                      ),
                       PopupMenuItem(
                         value: 'start',
                         child: Text('Software starten / erneut verbinden'),
-                      ),
-                      PopupMenuItem(
-                        value: 'connectionDiagnostics',
-                        child: Text('Verbindungsdiagnose exportieren'),
-                      ),
-                      PopupMenuItem(
-                        value: 'diagnostics',
-                        child: Text('Erkannte Elemente exportieren'),
                       ),
                       PopupMenuItem(
                         value: 'exit',

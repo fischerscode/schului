@@ -35,6 +35,25 @@ snapshot, so later edits affect the next session.
 .\schului.exe --lesson-file .\my-unit.schului
 ```
 
+This opens the student session directly, with no teacher editor or route to it
+in the learner menu. Missing or invalid lesson files show an error instead of
+opening the editor. Starting `schului.exe` without arguments opens the teacher
+editor; assign the student launcher below in classroom management software.
+
+Save the finished unit as `unterricht.schului` beside `schului.exe` and distribute
+the complete application folder. Point the students' launch path at the included
+`start-lernen.bat`; no arguments are needed. To select a different unit, pass its
+path as the first argument to the batch file, or use `--lesson-file` directly:
+
+```bat
+@echo off
+start "" "C:\Schule\schului\schului.exe" --lesson-file "C:\Unterricht\Text bearbeiten.schului"
+```
+
+Use quotes around paths containing spaces. Learner menus offer reconnect, exit
+and application information. The teacher editor provides **Ziele erkunden** for
+inspection and diagnostics.
+
 The runtime reuses a uniquely matching open window or starts the configured
 executable with separately quoted arguments, without a command shell. Matching
 uses the full executable path and optional class/title filters, not a global

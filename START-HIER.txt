@@ -3,6 +3,18 @@ schului
 
 schului.exe startet den Editor für Lehrkräfte.
 
+Für Lernende:
+Die fertige Einheit als unterricht.schului neben schului.exe speichern.
+In der Schülerverwaltung start-lernen.bat als Startpfad hinterlegen.
+Diese öffnet direkt den Unterricht ohne Lehreransicht. Fehlt die Datei oder ist
+sie ungültig, erscheint eine Fehlermeldung; der Editor wird nicht geöffnet.
+
+Alternativ mit einer beliebigen Lerndatei starten:
+schului.exe --lesson-file "C:\Unterricht\Text bearbeiten.schului"
+oder: start-lernen.bat "C:\Unterricht\Text bearbeiten.schului"
+
+Für Lehrkräfte:
+
 1. Über das Zahnrad „Zielsoftware“ wählen: geöffnetes Fenster oder Programmdatei.
 2. Eigene Lernschritte, Texte und Tipps anlegen.
 3. Einen Text als „Interaktiver Begriff“ bearbeiten.

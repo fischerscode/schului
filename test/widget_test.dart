@@ -1,3 +1,7 @@
+import 'dart:io';
+import 'dart:ui' as ui;
+
+import 'package:flutter/rendering.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,50 +13,72 @@ import 'sample_lesson.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  testWidgets('temporary inspector switch returns to the same lesson section', (
-    tester,
-  ) async {
-    final calls = <MethodCall>[];
-    var inspector = false;
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(bridge, (call) async {
-          calls.add(call);
-          if (call.method == 'inspector') {
-            inspector = call.arguments as bool;
-          }
-          if (call.method == 'state') {
-            return {
-              'connected': true,
-              'inspectorMode': inspector,
-              'nodes': <Object>[],
-            };
-          }
-          return null;
-        });
-    await tester.pumpWidget(
-      SchoolApp(role: 'lesson', document: sampleDocument()),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Nächster Abschnitt'));
-    await tester.pumpAndSettle();
-    expect(find.text('Abschnitt 2 von 7'), findsOneWidget);
-    await tester.tap(find.byTooltip('Lernumgebung'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Pfade entdecken (Inspector)'));
-    await tester.pumpAndSettle();
-    expect(find.text('Beispiel-Editor · Accessibility-Baum'), findsOneWidget);
-    expect(find.text('Pfad anzeigen / laden'), findsOneWidget);
-    expect(inspector, isTrue);
-    await tester.tap(find.text('Zurück zum Unterricht'));
-    await tester.pumpAndSettle();
-    expect(inspector, isFalse);
-    expect(find.text('Abschnitt 2 von 7'), findsOneWidget);
-    expect(
-      calls.lastWhere((call) => call.method == 'selectNode').arguments,
-      '',
-    );
-    await tester.pumpWidget(const SizedBox());
-  });
+  testWidgets(
+    'learner menu contains session actions without authoring or diagnostics',
+    (tester) async {
+      await tester.runAsync(() async {
+        for (final (family, filename) in [
+          ('Roboto', 'roboto-regular.ttf'),
+          ('MaterialIcons', 'materialicons-regular.otf'),
+        ]) {
+          final loader = FontLoader(family)
+            ..addFont(
+              File(
+                '.fvm/flutter_sdk/bin/cache/artifacts/material_fonts/$filename',
+              ).readAsBytes().then((bytes) => ByteData.sublistView(bytes)),
+            );
+          await loader.load();
+        }
+      });
+      tester.view.physicalSize = const Size(450, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+            bridge,
+            (call) async => call.method == 'state' ? {'connected': true} : null,
+          );
+      addTearDown(
+        () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(bridge, null),
+      );
+      final boundary = GlobalKey();
+      await tester.pumpWidget(
+        RepaintBoundary(
+          key: boundary,
+          child: SchoolApp(role: 'lesson', document: sampleDocument()),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Nächster Abschnitt'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Lernumgebung'));
+      await tester.pumpAndSettle();
+      expect(find.byType(PopupMenuItem<String>), findsNWidgets(3));
+      expect(find.text('Software starten / erneut verbinden'), findsOneWidget);
+      expect(find.text('Lernumgebung beenden'), findsOneWidget);
+      expect(find.text('Über dieses Programm'), findsOneWidget);
+      expect(find.textContaining('Inspector'), findsNothing);
+      expect(find.textContaining('exportieren'), findsNothing);
+      expect(find.byTooltip('Zielsoftware'), findsNothing);
+      final render = boundary.currentContext?.findRenderObject();
+      if (render is! RenderRepaintBoundary) fail('Missing learner rendering');
+      await tester.runAsync(() async {
+        final image = await render.toImage();
+        final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+        if (bytes == null) fail('Missing menu PNG');
+        await Directory('build/visual-review').create(recursive: true);
+        await File('build/visual-review/learner-menu.png')
+            .writeAsBytes(bytes.buffer.asUint8List());
+        image.dispose();
+      });
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(find.text('Abschnitt 2 von 7'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
 
   testWidgets('sections fill viewport, scroll continuously and publish hover', (
     tester,
@@ -142,9 +168,7 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('connection diagnostics remain available before connecting', (
-    tester,
-  ) async {
+  testWidgets('students can reconnect after a startup failure', (tester) async {
     final calls = <MethodCall>[];
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(bridge, (call) async {
@@ -154,9 +178,6 @@ void main() {
               'connected': false,
               'startupError': 'Testfehler beim Start',
             };
-          }
-          if (call.method == 'connectionDiagnostics') {
-            return r'C:\Temp\connection-diagnostics.txt';
           }
           return null;
         });
@@ -168,9 +189,9 @@ void main() {
     expect(find.text('Testfehler beim Start'), findsOneWidget);
     await tester.tap(find.byTooltip('Lernumgebung'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Verbindungsdiagnose exportieren'));
+    await tester.tap(find.text('Software starten / erneut verbinden'));
     await tester.pumpAndSettle();
-    expect(calls.any((c) => c.method == 'connectionDiagnostics'), isTrue);
+    expect(calls.any((c) => c.method == 'start'), isTrue);
     await tester.pumpWidget(const SizedBox());
   });
 }

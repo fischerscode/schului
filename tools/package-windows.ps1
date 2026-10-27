@@ -20,6 +20,7 @@ try {
         Copy-Item -LiteralPath (Join-Path $projectRoot $name) -Destination $packageDirectory
     }
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'start-inspector.cmd') -Destination $packageDirectory
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'start-lernen.bat') -Destination $packageDirectory
     $archivePath = $packageDirectory + '.zip'
     Compress-Archive -LiteralPath $packageDirectory -DestinationPath $archivePath
     Write-Output $archivePath

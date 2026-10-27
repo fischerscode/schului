@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Remove inspector and diagnostic exports from the learner menu; retain authoring
+  tools in the teacher editor. Include start-lernen.bat for direct lesson launch.
 - Use one software-independent authoring and learner workflow for all Windows
   applications: select executable/window, capture exact UIA targets, save and run.
 - Remove application-specific templates, path presets, launchers and fallback
