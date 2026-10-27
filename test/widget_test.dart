@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:schului/main.dart';
 import 'package:schului/lessons/lesson_content.dart';
+import 'package:schului/lessons/lesson_model.dart';
 import 'package:schului/src/schulzeug_theme.dart';
 
 import 'sample_lesson.dart';
@@ -57,6 +58,7 @@ void main() {
       await capture(tester, boundary, 'learner');
       await tester.tap(find.byTooltip('Nächster Abschnitt'));
       await tester.pumpAndSettle();
+      await capture(tester, boundary, 'learner-active');
       await tester.tap(find.byTooltip('Lernumgebung'));
       await tester.pumpAndSettle();
       expect(find.byType(PopupMenuItem<String>), findsNWidgets(3));
@@ -190,66 +192,167 @@ void main() {
     },
   );
 
+  testWidgets('tasks preserve hover targets and previous/next navigation', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final calls = <MethodCall>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(bridge, (call) async {
+          calls.add(call);
+          if (call.method == 'state') {
+            return {'connected': true, 'nodes': <Object>[]};
+          }
+          return null;
+        });
+    await tester.pumpWidget(
+      SchoolApp(role: 'lesson', document: sampleDocument()),
+    );
+    await tester.pump();
+    final viewport = find.descendant(
+      of: find.byType(LessonContent),
+      matching: find.byType(SingleChildScrollView),
+    );
+    final first = tester.getTopLeft(find.text('Willkommen')).dy;
+    final second = tester.getTopLeft(find.text('Dein erster Text')).dy;
+    expect(second - first, lessThan(tester.getSize(viewport).height / 2));
+    expect(
+      tester.getCenter(find.textContaining('Lerne den Editor')).dy,
+      lessThan(first + 90),
+    );
+    await tester.tap(find.byTooltip('Nächster Abschnitt'));
+    await tester.pumpAndSettle();
+    expect(find.text('2 / 7'), findsOneWidget);
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+    await mouse.moveTo(tester.getCenter(find.text('Speichern').first));
+    await tester.pump();
+    expect(
+      calls.lastWhere((call) => call.method == 'hover').arguments,
+      saveTarget.toJson(),
+    );
+    await mouse.moveTo(Offset.zero);
+    await tester.pump();
+    expect(
+      calls.any((c) => c.method == 'hover' && c.arguments == null),
+      isTrue,
+    );
+    await mouse.removePointer();
+    for (var i = 0; i < 5; i++) {
+      await tester.tap(find.byTooltip('Nächster Abschnitt'));
+      await tester.pumpAndSettle();
+    }
+    expect(find.text('7 / 7'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets(
-    'sections use compact spacing, scroll continuously and publish hover',
+    'previews activate explicitly by click or keyboard, never by scrolling',
     (tester) async {
-      tester.view.physicalSize = const Size(400, 900);
+      tester.view.physicalSize = const Size(400, 650);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
-      final calls = <MethodCall>[];
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(bridge, (call) async {
-            calls.add(call);
-            if (call.method == 'state') {
-              return {'connected': true, 'nodes': <Object>[]};
-            }
-            return null;
-          });
+      final selected = <int>[];
+      final hovered = <LessonLink?>[];
       await tester.pumpWidget(
-        SchoolApp(role: 'lesson', document: sampleDocument()),
+        MaterialApp(
+          theme: schulzeugTheme(),
+          home: Scaffold(
+            body: LessonContent(
+              lessons: sampleSteps,
+              onHover: hovered.add,
+              onSection: selected.add,
+            ),
+          ),
+        ),
       );
-      await tester.pump();
-      final viewport = find.descendant(
-        of: find.byType(LessonContent),
-        matching: find.byType(SingleChildScrollView),
-      );
-      final first = tester.getTopLeft(find.text('Willkommen')).dy;
-      final second = tester.getTopLeft(find.text('Dein erster Text')).dy;
-      expect(second - first, lessThan(tester.getSize(viewport).height / 2));
-      expect(
-        tester.getCenter(find.textContaining('Lerne den Editor')).dy,
-        lessThan(first + 90),
-      );
-      await tester.tap(find.byTooltip('Nächster Abschnitt'));
+      expect(find.text('Aktuelle Aufgabe'), findsOneWidget);
+      expect(find.text('Speichern'), findsNothing);
+      expect(find.byType(OutlinedButton), findsNothing);
+      final scroll = tester
+          .widget<SingleChildScrollView>(find.byType(SingleChildScrollView))
+          .controller!;
+      scroll.jumpTo(scroll.position.maxScrollExtent);
       await tester.pumpAndSettle();
-      expect(find.text('2 / 7'), findsOneWidget);
-      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
-      await mouse.addPointer(location: Offset.zero);
-      await mouse.moveTo(tester.getCenter(find.text('Speichern').first));
+      expect(selected, isEmpty);
+      expect(find.text('1 / 7'), findsOneWidget);
+      await tester.ensureVisible(find.text('Dein erster Text'));
+      await tester.tap(find.text('Dein erster Text'));
+      await tester.pumpAndSettle();
+      expect(selected, [1]);
+      expect(find.text('Speichern'), findsOneWidget);
+      expect(find.text('Aktuelle Aufgabe'), findsOneWidget);
+      await tester.ensureVisible(find.text('Abschluss'));
+      Focus.of(tester.element(find.text('Abschluss'))).requestFocus();
       await tester.pump();
-      expect(
-        calls.lastWhere((call) => call.method == 'hover').arguments,
-        saveTarget.toJson(),
-      );
-      await mouse.moveTo(Offset.zero);
-      await tester.pump();
-      expect(
-        calls.any((c) => c.method == 'hover' && c.arguments == null),
-        isTrue,
-      );
-      await mouse.removePointer();
-      for (var i = 0; i < 5; i++) {
-        await tester.tap(find.byTooltip('Nächster Abschnitt'));
-        await tester.pumpAndSettle();
-      }
-      expect(find.text('7 / 7'), findsOneWidget);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(selected, [1, 6]);
+      expect(find.text('Speichern'), findsNothing);
+      expect(hovered.whereType<LessonLink>(), isEmpty);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     },
   );
 
-  testWidgets('long content remains scrollable in a short narrow window', (
+  testWidgets(
+    'activation centers a fitting task and aligns long tasks at the top',
+    (tester) async {
+      tester.view.physicalSize = const Size(400, 600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final steps = [...sampleSteps];
+      steps[4] = LessonStep('Lange Aufgabe', [
+        LessonParagraph([
+          LessonText('Lies diesen Text und arbeite in der Software. ' * 100),
+        ]),
+        const LessonParagraph([LessonText('Ende der Aufgabe')]),
+      ], '');
+      final selected = <int>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: schulzeugTheme(),
+          home: Scaffold(
+            body: LessonContent(
+              lessons: steps,
+              onHover: (_) {},
+              onSection: selected.add,
+            ),
+          ),
+        ),
+      );
+      await tester.ensureVisible(find.text('Prüfen'));
+      await tester.tap(find.text('Prüfen'));
+      await tester.pumpAndSettle();
+      Finder task(String title) => find
+          .ancestor(of: find.text(title), matching: find.byType(Container))
+          .first;
+      final viewport = tester.getRect(find.byType(SingleChildScrollView));
+      final short = tester.getRect(task('Prüfen'));
+      expect(short.height, lessThan(viewport.height));
+      expect(short.center.dy, closeTo(viewport.center.dy, 2));
+      await tester.ensureVisible(find.text('Lange Aufgabe'));
+      await tester.tap(find.text('Lange Aufgabe'));
+      await tester.pumpAndSettle();
+      final long = tester.getRect(task('Lange Aufgabe'));
+      expect(long.height, greaterThan(viewport.height));
+      expect(long.top, closeTo(viewport.top, 2));
+      await tester.ensureVisible(find.text('Ende der Aufgabe'));
+      await tester.pumpAndSettle();
+      expect(selected, [3, 4]);
+      expect(find.text('5 / 7'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets('task navigation remains usable in a short narrow window', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(320, 500);

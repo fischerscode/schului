@@ -71,12 +71,15 @@ Use quotes around paths containing spaces. Learner menus offer reconnect, exit
 and application information. The teacher editor provides **Ziele erkunden** for
 inspection and diagnostics.
 
-Learners read compact numbered sections in a continuous scroll. The shared
-bottom bar tracks the current reading position (not task completion), moves
-between sections and offers a tip only when that section contains one. Target
-links respond to hover, keyboard focus and activation. Connection failures show
-direct start and window-selection actions. The teacher preview uses the same
-reading layout.
+Learners see one full active task with generous padding; other numbered tasks
+remain available as muted, readable previews. Click a preview, activate it by
+keyboard or use the bottom arrows to switch tasks. Scrolling does not change
+the active task. Activation centers a task when it fits and surrounding content
+allows; longer tasks align at the top and remain fully scrollable. The bottom
+bar shows the active position (not completion) and offers authored tips. Only
+active content exposes hover targets and webpage buttons. Connection failures
+show direct start and window-selection actions. The session menu stays beside
+the title in the fixed header. The teacher preview shares this layout.
 
 The runtime reuses a uniquely matching open window or starts the configured
 executable with separately quoted arguments, without a command shell. Matching

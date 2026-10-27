@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Focus the learner view on one active task with more padding and muted previews;
+  switch explicitly by click, keyboard or navigation, centering fitting tasks
+  while aligning long tasks at the top. Keep the session menu beside the title.
 - Redesign learner reading with compact numbered sections, a shared navigation
   and reading-position bar, contextual tips and direct connection recovery.
   Preserve continuous scrolling, exact hover targets and the application split.

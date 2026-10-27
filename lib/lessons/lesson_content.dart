@@ -39,7 +39,7 @@ class _LessonContentState extends State<LessonContent> {
   @override
   void initState() {
     super.initState();
-    controller.addListener(updateSection);
+    controller.addListener(clearHover);
   }
 
   @override
@@ -48,36 +48,174 @@ class _LessonContentState extends State<LessonContent> {
     super.dispose();
   }
 
-  void updateSection() {
-    final box = viewport.currentContext?.findRenderObject() as RenderBox?;
-    if (box == null) return;
-    final origin = box.localToGlobal(Offset.zero).dy;
-    var next = 0;
-    for (var i = 0; i < sectionKeys.length; i++) {
-      final section =
-          sectionKeys[i].currentContext?.findRenderObject() as RenderBox?;
-      if (section != null &&
-          section.localToGlobal(Offset.zero).dy <= origin + 16) {
-        next = i;
-      }
-    }
-    if (next != current) {
-      setState(() => current = next);
-      widget.onSection(next);
-    }
-    if (hovered != null) {
-      hovered = null;
-      widget.onHover(null);
-    }
+  void clearHover() {
+    if (hovered == null) return;
+    hovered = null;
+    widget.onHover(null);
   }
 
-  void go(int index) => Scrollable.ensureVisible(
-    sectionKeys[index].currentContext!,
-    duration: MediaQuery.disableAnimationsOf(context)
-        ? Duration.zero
-        : const Duration(milliseconds: 180),
-    curve: Curves.easeInOut,
-  );
+  void go(int index) {
+    if (index == current) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    clearHover();
+    setState(() => current = index);
+    widget.onSection(index);
+    // Expanding one section changes all subsequent offsets. Scroll only after
+    // the new layout, and keep scrolling independent of task activation.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final section = sectionKeys[index].currentContext;
+      if (section == null) return;
+      final sectionBox = section.findRenderObject() as RenderBox?;
+      final viewportBox =
+          viewport.currentContext?.findRenderObject() as RenderBox?;
+      final fits =
+          sectionBox != null &&
+          viewportBox != null &&
+          sectionBox.size.height <= viewportBox.size.height;
+      Scrollable.ensureVisible(
+        section,
+        alignment: fits ? .5 : 0,
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 180),
+        curve: Curves.easeInOut,
+      );
+    });
+  }
+
+  String preview(LessonStep step) => step.content
+      .map(
+        (block) => switch (block) {
+          LessonParagraph() => block.spans.map((span) => span.text).join(),
+          LessonBulletList() =>
+            block.items
+                .map((item) => item.spans.map((span) => span.text).join())
+                .join(' '),
+          LessonActivity() => block.label,
+        },
+      )
+      .join(' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+
+  Widget section(int index) {
+    final theme = Theme.of(context);
+    final step = widget.lessons[index];
+    final active = index == current;
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            Text(
+              '${index + 1}'.padLeft(2, '0'),
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: active
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(width: 12),
+            if (active)
+              Expanded(
+                child: Text(
+                  'Aktuelle Aufgabe',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ),
+            if (!active) const Spacer(),
+            Icon(
+              active ? Icons.radio_button_checked : Icons.chevron_right,
+              color: active
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.onSurfaceVariant,
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Semantics(
+          header: active,
+          child: Text(
+            step.title,
+            style:
+                (active
+                        ? theme.textTheme.titleLarge
+                        : theme.textTheme.titleMedium)
+                    ?.copyWith(
+                      color: active
+                          ? theme.colorScheme.onSurface
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+          ),
+        ),
+        if (active) ...[
+          const SizedBox(height: 24),
+          for (final item in step.content)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: block(item),
+            ),
+        ] else if (preview(step).isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            preview(step),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ],
+    );
+    return Container(
+      key: sectionKeys[index],
+      decoration: BoxDecoration(
+        color: active
+            ? theme.colorScheme.surface
+            : theme.scaffoldBackgroundColor,
+        border: Border(
+          left: BorderSide(
+            width: 3,
+            color: active ? theme.colorScheme.primary : Colors.transparent,
+          ),
+          bottom: BorderSide(color: theme.colorScheme.outlineVariant),
+        ),
+      ),
+      child: active
+          ? Semantics(
+              expanded: true,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
+                child: content,
+              ),
+            )
+          : TextButton(
+              onPressed: () => go(index),
+              style: ButtonStyle(
+                padding: const WidgetStatePropertyAll(EdgeInsets.all(24)),
+                shape: const WidgetStatePropertyAll(RoundedRectangleBorder()),
+                side: WidgetStateProperty.resolveWith(
+                  (states) => BorderSide(
+                    width: 2,
+                    color: states.contains(WidgetState.focused)
+                        ? const Color(0xFF007AFF)
+                        : Colors.transparent,
+                  ),
+                ),
+              ),
+              child: Semantics(
+                label: 'Aufgabe ${index + 1} aktivieren: ${step.title}',
+                expanded: false,
+                child: ExcludeSemantics(child: content),
+              ),
+            ),
+    );
+  }
 
   Widget paragraph(LessonParagraph paragraph) => Text.rich(
     TextSpan(
@@ -219,101 +357,39 @@ class _LessonContentState extends State<LessonContent> {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      Expanded(
-        child: LayoutBuilder(
-          builder: (context, constraints) => Scrollbar(
-            controller: controller,
-            child: SingleChildScrollView(
-              key: viewport,
-              controller: controller,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (widget.title case final title?) ...[
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
-                      child: Semantics(
-                        header: true,
-                        child: Text(
-                          title,
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                      ),
-                    ),
-                    const Divider(),
-                  ],
-
-                  for (var i = 0; i < widget.lessons.length; i++)
-                    Container(
-                      key: sectionKeys[i],
-                      // Leave enough trailing room to align the final heading
-                      // with the viewport when navigating to the last section.
-                      constraints: i == widget.lessons.length - 1
-                          ? BoxConstraints(minHeight: constraints.maxHeight)
-                          : null,
-                      decoration: BoxDecoration(
-                        border: Border(
-                          left: BorderSide(
-                            width: 2,
-                            color: i == current
-                                ? Theme.of(context).colorScheme.primary
-                                : Colors.transparent,
-                          ),
-                          bottom: BorderSide(
-                            color: Theme.of(context).colorScheme.outlineVariant,
-                          ),
-                        ),
-                      ),
-                      padding: const EdgeInsets.fromLTRB(20, 20, 24, 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.only(
-                                  top: 2,
-                                  right: 12,
-                                ),
-                                child: ExcludeSemantics(
-                                  child: Text(
-                                    '${i + 1}'.padLeft(2, '0'),
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelMedium
-                                        ?.copyWith(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .onSurfaceVariant,
-                                        ),
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                child: Semantics(
-                                  header: true,
-                                  child: Text(
-                                    widget.lessons[i].title,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleMedium,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          for (final item in widget.lessons[i].content)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: block(item),
-                            ),
-                        ],
-                      ),
-                    ),
-                ],
+      if (widget.title != null || widget.actions != null) ...[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 16, 8, 16),
+          child: Row(
+            children: [
+              Expanded(
+                child: Semantics(
+                  header: true,
+                  child: Text(
+                    widget.title ?? '',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ),
               ),
+              ?widget.actions,
+            ],
+          ),
+        ),
+        const Divider(),
+      ],
+      Expanded(
+        child: Scrollbar(
+          controller: controller,
+          child: SingleChildScrollView(
+            key: viewport,
+            controller: controller,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var i = 0; i < widget.lessons.length; i++) section(i),
+              ],
             ),
           ),
         ),
@@ -388,7 +464,6 @@ class _LessonContentState extends State<LessonContent> {
                       tooltip: 'Tipp anzeigen',
                       icon: const Icon(Icons.lightbulb_outline),
                     ),
-                  ?widget.actions,
                 ],
               ),
             ),
