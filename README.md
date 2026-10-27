@@ -94,6 +94,44 @@ is insufficient. `schului.exe` opens the general editor. The included
 `start-inspector.cmd path-to-unit.schului` opens the inspector for that unit.
 Embedded HTTPS activities require internet access and Edge WebView2.
 
+## CI and releases
+
+GitHub Actions runs the Windows checks on pushes to `main`, pull requests and
+manual CI runs: pinned FVM/Flutter setup, locked dependencies, formatting,
+analysis, Flutter tests, a native release build and both C++ regression tests.
+
+To distribute a new version, update the package version/changelog and publish a
+GitHub Release for the intended tag. Publishing also triggers for prereleases.
+The release workflow checks and builds that tag again, then attaches:
+
+- `schului-windows-x64.zip`: the complete portable application, license,
+  instructions, both launchers and app-local Visual C++ runtime DLLs, without
+  debug symbols or local lesson files.
+- `schului-windows-x64.zip.sha256`: a SHA-256 checksum for that ZIP.
+
+The ZIP contains one folder; extract it completely before starting schului.
+Target applications and Edge WebView2 must be available on the destination PC.
+A tag push alone does not publish a release or trigger asset publication. Re-run
+the release workflow to retry a failed build/upload; matching assets are replaced.
+Only the upload job has repository write access; no personal access token is needed.
+
+The workflows are in `.github/workflows/ci.yml` and `release.yml`. No workflow
+creates tags, updates versions, or publishes a release automatically. The normal
+CI workflow can also be used as a required branch-protection check.
+
+Local equivalents after a Windows release build:
+
+```powershell
+.\tools\test-native.ps1
+.\tools\package-windows.ps1 -SkipBuild -PackageName schului-windows-x64
+```
+
+Packaging validates the ZIP contents and writes its checksum next to it. It
+refuses an existing output name; omit `-PackageName` to use a timestamp locally.
+The Visual C++ DLLs are copied from the build's Visual Studio redistributable
+directory; `-CrtDirectory` can select an explicit x64 CRT directory. This follows
+[Flutter's ZIP deployment instructions](https://docs.flutter.dev/platform-integration/windows/building#building-your-own-zip-file-for-windows).
+
 ## Development and verification
 
 ```powershell

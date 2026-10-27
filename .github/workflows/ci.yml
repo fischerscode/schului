@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      portable-package:
+        description: Upload the checked portable Windows package for a release.
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'release' }}
+
+jobs:
+  windows:
+    name: Windows checks and build
+    runs-on: windows-2025
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Configure tool caches
+        run: |
+          "FVM_CACHE_PATH=$(Join-Path $env:RUNNER_TOOL_CACHE 'fvm')" >> $env:GITHUB_ENV
+          "PUB_CACHE=$(Join-Path $env:RUNNER_TOOL_CACHE 'pub-cache')" >> $env:GITHUB_ENV
+      - name: Set up bootstrap Dart
+        uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1
+        with:
+          sdk: '3.13.0'
+      - name: Cache the pinned Flutter SDK
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: ${{ env.FVM_CACHE_PATH }}
+          key: windows-x64-fvm-${{ hashFiles('.fvmrc') }}
+      - name: Install FVM
+        run: |
+          dart pub global activate fvm 4.1.2
+          if ($LASTEXITCODE -ne 0) { throw 'FVM installation failed.' }
+          Join-Path $env:PUB_CACHE 'bin' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Install the project SDK
+        run: fvm install --skip-pub-get
+      - name: Link the project SDK
+        run: |
+          $flutterVersion = (Get-Content .fvmrc -Raw | ConvertFrom-Json).flutter
+          fvm use $flutterVersion --force --skip-pub-get
+      - name: Resolve locked dependencies
+        run: fvm flutter pub get --enforce-lockfile
+      - name: Check formatting
+        run: fvm dart run melos run format
+      - name: Analyze
+        run: fvm flutter analyze --no-pub
+      - name: Flutter tests
+        run: fvm flutter test --no-pub --timeout 2m
+      - name: Windows release build
+        run: fvm flutter build windows --release --no-pub
+      - name: Native regression tests
+        run: ./tools/test-native.ps1
+      - name: Verify the lockfile and SDK pin stayed unchanged
+        run: git diff --exit-code -- pubspec.lock .fvmrc
+      - name: Package the checked build
+        if: ${{ inputs.portable-package == true }}
+        id: package
+        run: |
+          $archive = ./tools/package-windows.ps1 -SkipBuild -PackageName schului-windows-x64
+          "archive=$archive" >> $env:GITHUB_OUTPUT
+          "checksum=$archive.sha256" >> $env:GITHUB_OUTPUT
+      - name: Upload portable release files
+        if: ${{ inputs.portable-package == true }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-portable
+          path: |
+            ${{ steps.package.outputs.archive }}
+            ${{ steps.package.outputs.checksum }}
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add GitHub Actions checks for formatting, analysis, Flutter/native tests and
+  Windows builds; attach portable ZIPs and SHA-256 checksums to published releases.
 - Show arbitrary HTTPS pages with teacher-authored button labels, window titles
   and optional instructions. Replace provider-specific URL window text with
   neutral loading/error messages; preserve existing URL blocks with defaults.
