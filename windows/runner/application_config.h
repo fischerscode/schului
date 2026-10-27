@@ -10,8 +10,7 @@ using flutter::EncodableValue;
 using flutter::EncodableMap;
 using flutter::EncodableList;
 struct Config {
-  bool draw = true;
-  std::wstring name = L"LibreOffice Draw", executable, window_class, title_contains;
+  std::wstring name, executable, window_class, title_contains;
   std::vector<std::wstring> arguments;
 };
 inline std::wstring Wide(const std::string &text) {
@@ -39,7 +38,6 @@ inline std::optional<Config> Parse(const EncodableValue &raw) {
   const auto *map = std::get_if<EncodableMap>(&raw);
   if (!map) return std::nullopt;
   auto kind = Text(*map, "kind");
-  if (kind == L"libreoffice.draw") return Config{};
   if (kind != L"windows") return std::nullopt;
   auto name = Text(*map, "name"), executable = Text(*map, "executable");
   auto cls = Text(*map, "windowClass", true), title = Text(*map, "titleContains", true);
@@ -47,7 +45,7 @@ inline std::optional<Config> Parse(const EncodableValue &raw) {
   const auto *list = args == map->end() ? nullptr : std::get_if<EncodableList>(&args->second);
   if (!name || !executable || !cls || !title || !list || list->size() > 100 || !std::filesystem::path(*executable).is_absolute()) return std::nullopt;
   Config result;
-  result.draw = false; result.name = *name; result.executable = *executable;
+  result.name = *name; result.executable = *executable;
   result.window_class = *cls; result.title_contains = *title;
   for (const auto &entry : *list) {
     const auto *value = std::get_if<std::string>(&entry);
@@ -92,7 +90,6 @@ inline bool SameExecutable(const std::wstring &left, const std::wstring &right) 
   return CompareStringOrdinal(a.c_str(), -1, b.c_str(), -1, TRUE) == CSTR_EQUAL;
 }
 inline bool Matches(const Window &window, const Config &config) {
-  if (config.draw) return live_path::Normalize(std::filesystem::path(window.executable).filename().wstring()) == L"soffice.bin" && window.title.find(L"LibreOffice Draw") != std::wstring::npos;
   return SameExecutable(window.executable, config.executable) &&
     (config.window_class.empty() || window.window_class == config.window_class) &&
     (config.title_contains.empty() || live_path::Normalize(window.title).find(live_path::Normalize(config.title_contains)) != std::wstring::npos);

@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -34,15 +33,6 @@ void main() {
       throwsFormatException,
     );
   });
-  test('version 1 Draw files migrate without losing lesson content', () {
-    final document = LessonDocument.decode(
-      File('examples/erste-zeichnung.schului').readAsStringSync(),
-    );
-    expect(document.application, isA<DrawApplication>());
-    expect(document.steps.single.links.single.target, isNotNull);
-    final migrated = LessonDocument.decode(document.encode());
-    expect(migrated.encode(), document.encode());
-  });
   test('generic selectors preserve title-like wrappers and document names and never use fallback', () {
     AccessibilityNode node(
       String id,
@@ -64,7 +54,7 @@ void main() {
       node('d', 'w', 'Dokument', 'Exercise', 2),
       node('b', 'd', 'Button', 'Save', 3),
     ];
-    final captured = NodeSelector.capture(nodes.last, nodes, legacyDraw: false);
+    final captured = NodeSelector.capture(nodes.last, nodes);
     expect(captured.path.length, 4);
     expect(captured.path[1].name, 'Example Editor');
     final loaded = NodeSelector.fromJson(captured.toJson());
@@ -72,7 +62,7 @@ void main() {
     expect(loaded.resolve(nodes).node?.id, 'b');
     final otherDocument = [...nodes]
       ..[2] = node('d', 'w', 'Dokument', 'Other exercise', 2);
-    expect(loaded.resolve(otherDocument, allowFallback: true).node, isNull);
+    expect(loaded.resolve(otherDocument).node, isNull);
   });
   testWidgets(
     'teachers select any open application and keep it when editing content',

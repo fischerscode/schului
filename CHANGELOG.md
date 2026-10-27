@@ -2,19 +2,16 @@
 
 ## Unreleased
 
-- Keep the learner/inspector main window available in the taskbar and window
-  switcher, including while several candidate application windows await selection.
-
-- Select arbitrary Windows target software from running windows or an executable.
-  Store startup arguments and window filters in each unit, and capture generic
-  UIA targets without Draw-specific path adaptations.
-- Start with an unconfigured unit; retain Draw as an optional example and adapter.
-- Write lesson format version 2 and continue reading version 1 Draw files.
-  Older schului builds cannot read newly saved version 2 files.
-
-- Select hover targets directly in an open Draw window; preview an outline,
-  confirm with F8 and automatically insert a validated semantic path.
-- Preserve existing targets on cancellation and report native picker errors.
+- Use one software-independent authoring and learner workflow for all Windows
+  applications: select executable/window, capture exact UIA targets, save and run.
+- Remove application-specific templates, path presets, launchers and fallback
+  matching. Preserve full raw paths, document names and unnamed sibling indices.
+- **Breaking:** remove the former Draw adapter and version 1 reader. Only version
+  2 units with Windows/unconfigured application settings and version 2 exact
+  selectors are supported. Recreate older units and capture their targets again.
+  Existing general-purpose version 2 units remain readable.
+- Keep learner/inspector windows available in the taskbar and window switcher.
+- Preserve existing targets on picker cancellation and report native picker errors.
 
 ## 0.1.0
 

@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'lessons/draw_lesson.dart';
 import 'lessons/lesson_content.dart';
+import 'lessons/lesson_model.dart';
 import 'src/windows_bridge.dart';
 import 'src/inspector_view.dart';
 import 'src/learning_app_view.dart';
@@ -20,12 +20,19 @@ Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   final fileIndex = args.indexOf('--lesson-file');
   try {
+    if (fileIndex == args.length - 1 && fileIndex >= 0) {
+      throw const FormatException('Dateipfad nach --lesson-file angeben.');
+    }
     final document = fileIndex < 0
         ? null
         : await readLessonFile(args[fileIndex + 1]);
     final role = args.isEmpty ? 'teacher' : args.first;
+    if (role != 'teacher' && role != 'learningApp' && document == null) {
+      throw const FormatException('Eine Unterrichtseinheit auswählen.');
+    }
     if (role == 'lesson' || role == 'inspector') {
-      final application = document?.application ?? const DrawApplication();
+      final application =
+          document?.application ?? const UnconfiguredApplication();
       if (application is UnconfiguredApplication) {
         throw const FormatException(
           'Zuerst im Editor eine Zielsoftware auswählen.',
@@ -60,25 +67,26 @@ Future<void> main(List<String> args) async {
 }
 
 class SchoolApp extends StatelessWidget {
-  const SchoolApp({super.key, this.role = 'lesson', this.document});
+  const SchoolApp({super.key, this.role = 'teacher', this.document});
   final String role;
   final LessonDocument? document;
   @override
   Widget build(BuildContext context) => MaterialApp(
     debugShowCheckedModeBanner: false,
     theme: schulzeugTheme(),
-    home: switch (role) {
-      'inspector' => InspectorView(
-        applicationName: document?.application.name ?? 'Draw',
-        legacyDraw:
-            document == null || document?.application is DrawApplication,
+    home: switch ((role, document)) {
+      ('inspector', final lesson) => InspectorView(
+        applicationName: lesson?.application.name ?? 'Zielsoftware',
       ),
-      'learningApp' => const LearningAppView(),
-      'teacher' => const TeacherView(),
-      _ => SessionView(
+      ('learningApp', _) => const LearningAppView(),
+      ('teacher', _) => const TeacherView(),
+      (_, final lesson?) => SessionView(
         role: role,
-        lessons: document?.steps ?? steps,
-        application: document?.application ?? const DrawApplication(),
+        lessons: lesson.steps,
+        application: lesson.application,
+      ),
+      _ => const Scaffold(
+        body: Center(child: Text('Eine Unterrichtseinheit auswählen.')),
       ),
     },
   );
@@ -88,8 +96,8 @@ class SessionView extends StatefulWidget {
   const SessionView({
     super.key,
     required this.role,
-    this.lessons = steps,
-    this.application = const DrawApplication(),
+    required this.lessons,
+    required this.application,
   });
   final String role;
   final List<LessonStep> lessons;
@@ -184,7 +192,6 @@ class _SessionViewState extends State<SessionView> {
         builder: (_) => InspectorView(
           showLessonReturn: true,
           applicationName: widget.application.name,
-          legacyDraw: widget.application is DrawApplication,
         ),
       ),
     );
@@ -303,8 +310,8 @@ class _SessionViewState extends State<SessionView> {
     if (state['inspectorMode'] == true) return InspectorOverlay(state: state);
     final target = hoverTarget;
     final scale = MediaQuery.devicePixelRatioOf(context);
-    final originX = (state['drawLeft'] as num? ?? 0).toDouble();
-    final originY = (state['drawTop'] as num? ?? 0).toDouble();
+    final originX = (state['targetLeft'] as num? ?? 0).toDouble();
+    final originY = (state['targetTop'] as num? ?? 0).toDouble();
     return ColoredBox(
       color: overlayKey,
       child: Stack(

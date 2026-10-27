@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:schului/main.dart';
-import 'package:schului/lessons/draw_targets.dart';
 
-import 'draw_rectangle_path_test.dart' show drawTree;
+import 'sample_lesson.dart';
 
 void main() {
   testWidgets(
@@ -11,10 +10,7 @@ void main() {
     (tester) async {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetDevicePixelRatio);
-      final nodes = drawTree(
-        'Meine_Zeichnung',
-        'live-',
-      ).map((node) => node.toMap()).toList();
+      final nodes = sampleTree().map((node) => node.toMap()).toList();
       nodes.last['offscreen'] = true;
       nodes.last['width'] = 0.0;
       Map<String, dynamic>? geometry;
@@ -24,9 +20,7 @@ void main() {
           .setMockMethodCallHandler(bridge, (call) async {
             if (call.method == 'state') {
               return {
-                'hoverTarget': hovering
-                    ? DrawTargets.rectangleObject.toJson()
-                    : null,
+                'hoverTarget': hovering ? openTarget.toJson() : null,
                 'hoverGeometry': geometry,
                 'hoverGeneration': 1,
                 'hoverGeometryGeneration': geometryGeneration,
@@ -34,13 +28,15 @@ void main() {
                     <
                       Object
                     >[], // The new rectangle is absent from the snapshot.
-                'drawLeft': 100.0,
-                'drawTop': 50.0,
+                'targetLeft': 100.0,
+                'targetTop': 50.0,
               };
             }
             return null;
           });
-      await tester.pumpWidget(const SchoolApp(role: 'overlay'));
+      await tester.pumpWidget(
+        SchoolApp(role: 'overlay', document: sampleDocument()),
+      );
       await tester.pump();
       expect(
         find.byType(Positioned),
@@ -76,7 +72,7 @@ void main() {
         findsNothing,
         reason: 'Late geometry from a previous hover is ignored.',
       );
-      geometry = {...geometry, 'id': 'live-rectangle'};
+      geometry = {...geometry, 'id': 'save'};
       hovering = false;
       await tester.pump(const Duration(milliseconds: 100));
       await tester.pump();

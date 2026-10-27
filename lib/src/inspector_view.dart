@@ -50,12 +50,10 @@ class InspectorView extends StatefulWidget {
   const InspectorView({
     super.key,
     this.showLessonReturn = false,
-    this.applicationName = 'Draw',
-    this.legacyDraw = true,
+    this.applicationName = 'Zielsoftware',
   });
   final bool showLessonReturn;
   final String applicationName;
-  final bool legacyDraw;
   @override
   State<InspectorView> createState() => _InspectorViewState();
 }
@@ -242,7 +240,7 @@ class _InspectorViewState extends State<InspectorView> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (!widget.legacyDraw && state['connected'] != true)
+              if (state['connected'] != true)
                 Align(
                   alignment: Alignment.centerLeft,
                   child: TextButton.icon(
@@ -369,7 +367,6 @@ class _InspectorViewState extends State<InspectorView> {
                                             selector = NodeSelector.capture(
                                               node,
                                               nodes,
-                                              legacyDraw: widget.legacyDraw,
                                             );
                                             command('selectNode', node.id);
                                           },
@@ -540,8 +537,8 @@ class InspectorOverlay extends StatelessWidget {
         ? AccessibilityNode.fromMap(Map<String, dynamic>.from(raw))
         : null;
     final scale = MediaQuery.devicePixelRatioOf(context);
-    final originX = (state['drawLeft'] as num? ?? 0).toDouble();
-    final originY = (state['drawTop'] as num? ?? 0).toDouble();
+    final originX = (state['targetLeft'] as num? ?? 0).toDouble();
+    final originY = (state['targetTop'] as num? ?? 0).toDouble();
     return ColoredBox(
       color: overlayKey,
       child: IgnorePointer(

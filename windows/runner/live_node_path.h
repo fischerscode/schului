@@ -31,11 +31,6 @@ inline bool Matches(const Segment &segment, const Metadata &node) {
   return Normalize(segment.type) == Normalize(node.type) &&
       (!segment.name || Normalize(*segment.name) == Normalize(node.name));
 }
-inline bool TitleWrapper(const Metadata &node, const Metadata &root) {
-  const auto type = Normalize(node.type);
-  return (type.empty() || type == L"element") &&
-      !Normalize(node.name).empty() && Normalize(node.name) == Normalize(root.name);
-}
 template <typename Handle> struct Result {
   std::optional<Handle> node;
   bool ambiguous = false, failed = false;
@@ -45,7 +40,7 @@ template <typename Handle> struct Result {
 // Unreadable siblings invalidate indexed selection rather than shifting indices.
 template <typename Handle, typename Provider>
 Result<Handle> Resolve(const Handle &root, const std::vector<Segment> &path,
-                       Provider &provider, bool draw_compatibility = true) {
+                       Provider &provider) {
   Result<Handle> result;
   if (path.empty() || path.size() > 64 || provider.Cancelled()) return result;
   const auto root_metadata = provider.Read(root);
@@ -69,10 +64,6 @@ Result<Handle> Resolve(const Handle &root, const std::vector<Segment> &path,
       const auto type = Normalize(metadata.type);
       const bool unnamed = Normalize(metadata.name).empty();
       const int sibling_index = unnamed ? unnamed_indices[type]++ : -1;
-      if (draw_compatibility && TitleWrapper(metadata, root_metadata)) {
-        self(self, child, index, depth + 1);
-        continue;
-      }
       const auto &segment = path[index];
       if (!Matches(segment, metadata) ||
           (segment.index && *segment.index != sibling_index)) continue;

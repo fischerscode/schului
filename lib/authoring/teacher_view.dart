@@ -133,10 +133,9 @@ class _TeacherViewState extends State<TeacherView> {
     if (next == null || !mounted) return;
     final previous = document.application;
     final sameSoftware =
-        previous is DrawApplication && next is DrawApplication ||
         previous is WindowsApplication &&
-            next is WindowsApplication &&
-            previous.executable.toLowerCase() == next.executable.toLowerCase();
+        next is WindowsApplication &&
+        previous.executable.toLowerCase() == next.executable.toLowerCase();
     final hasTargets = document.steps.any(
       (step) => step.links.any((link) => link.target != null),
     );
@@ -544,20 +543,6 @@ class _TeacherViewState extends State<TeacherView> {
                     Icons.settings_outlined,
                     'Zielsoftware',
                     busy ? null : configureApplication,
-                  ),
-                  PopupMenuButton<String>(
-                    tooltip: 'Vorlagen',
-                    onSelected: (_) async {
-                      if (await canDiscard() && mounted) {
-                        await replace(LessonDocument.example());
-                      }
-                    },
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(
-                        value: 'draw',
-                        child: Text('Draw-Beispiel'),
-                      ),
-                    ],
                   ),
                   action(
                     Icons.account_tree_outlined,

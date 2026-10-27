@@ -10,7 +10,7 @@ const targetPickerChannel = MethodChannel('schului/target-picker');
 class TargetPicker {
   Future<ApplicationTarget?> pick({
     required void Function(String label, String error) onCandidate,
-    TargetApplication application = const DrawApplication(),
+    required TargetApplication application,
   }) async {
     targetPickerChannel.setMethodCallHandler((call) async {
       if (call.method != 'candidate') return;
@@ -27,8 +27,7 @@ class TargetPicker {
         application.toJson(),
       );
       if (raw == null) return null;
-      if (raw is! Map<Object?, Object?> ||
-          raw['includesUnnamedClient'] is! bool) {
+      if (raw is! Map<Object?, Object?>) {
         throw const FormatException(
           'Windows hat einen ungültigen Zielpfad geliefert.',
         );

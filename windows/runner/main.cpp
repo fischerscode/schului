@@ -14,12 +14,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE previous,
     CreateAndAttachConsole();
   CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
   auto args = GetCommandLineArguments();
-  bool smoke_test =
-      std::find(args.begin(), args.end(), "--smoke-test") != args.end();
   bool inspector =
       std::find(args.begin(), args.end(), "--inspector") != args.end();
   auto lesson_file = std::find(args.begin(), args.end(), "--lesson-file");
-  const bool learner = inspector || lesson_file != args.end() || smoke_test;
+  const bool learner = inspector || lesson_file != args.end();
   flutter::DartProject project(L"data");
   auto arguments = [&](const std::string &role) {
     std::vector<std::string> values{role};
@@ -59,38 +57,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE previous,
       !learning_app.Create(L"LearningApps – Was hast du gelernt?", {0, 0}, {1100, 760}))
     return EXIT_FAILURE;
   lesson.SetQuitOnClose(true);
-  if (smoke_test)
-    SetTimer(lesson.GetHandle(), 2, 15000, nullptr);
   MSG message{};
   while (GetMessage(&message, nullptr, 0, 0) > 0) {
-    if (smoke_test && message.message == WM_TIMER && message.wParam == 2) {
-      static int phase = 0;
-      if (phase++ == 0) {
-        SetForegroundWindow(lesson.GetHandle());
-        if (inspector) {
-          Session().SetInspector(true);
-          auto snapshot = Session().State();
-          const auto &state = std::get<flutter::EncodableMap>(snapshot);
-          const auto &nodes = std::get<flutter::EncodableList>(
-              state.at(flutter::EncodableValue("nodes")));
-          for (const auto &value : nodes) {
-            const auto &node = std::get<flutter::EncodableMap>(value);
-            if (std::get<std::string>(
-                    node.at(flutter::EncodableValue("name"))) == "Rechteck") {
-              Session().SelectNode(std::get<std::string>(
-                  node.at(flutter::EncodableValue("id"))));
-              break;
-            }
-          }
-        }
-        Session().SetStep(1);
-        Session().SetHint(true);
-      } else {
-        Session().SmokeTest();
-        Session().Restore();
-        PostQuitMessage(0);
-      }
-    }
     TranslateMessage(&message);
     DispatchMessage(&message);
   }

@@ -25,8 +25,7 @@ inline const EncodableValue *Entry(const EncodableMap &map, const char *key) {
   const auto found = map.find(EncodableValue(key));
   return found == map.end() ? nullptr : &found->second;
 }
-inline bool Parse(const EncodableValue &target, std::vector<live_path::Segment> *path,
-                  bool *includes_client, bool *draw_compatibility = nullptr) {
+inline bool Parse(const EncodableValue &target, std::vector<live_path::Segment> *path) {
   const auto *map = std::get_if<EncodableMap>(&target);
   if (!map) return false;
   const auto *selector_value = Entry(*map, "selector");
@@ -34,15 +33,12 @@ inline bool Parse(const EncodableValue &target, std::vector<live_path::Segment> 
   if (!selector) return false;
   const auto *mode_value = Entry(*selector, "mode");
   const auto *mode = mode_value ? std::get_if<std::string>(mode_value) : nullptr;
-  if (mode_value && (!mode || *mode != "exact")) return false;
-  const bool compatibility = !mode_value;
-  if (draw_compatibility) *draw_compatibility = compatibility;
+  const auto *version_value = Entry(*selector, "version");
+  const auto *version = version_value ? std::get_if<int32_t>(version_value) : nullptr;
+  if (!mode || *mode != "exact" || !version || *version != 2) return false;
   const auto *path_value = Entry(*selector, "path");
   const auto *entries = path_value ? std::get_if<EncodableList>(path_value) : nullptr;
   if (!entries || entries->empty() || entries->size() > 64) return false;
-  const auto *client_value = Entry(*map, "includesUnnamedClient");
-  const auto *client = client_value ? std::get_if<bool>(client_value) : nullptr;
-  *includes_client = client && *client;
   for (const auto &value : *entries) {
     const auto *entry = std::get_if<EncodableMap>(&value);
     if (!entry) return false;
@@ -59,12 +55,10 @@ inline bool Parse(const EncodableValue &target, std::vector<live_path::Segment> 
       int64_t index = -1;
       if (const auto *small_index = std::get_if<int32_t>(index_value)) index = *small_index;
       else if (const auto *large_index = std::get_if<int64_t>(index_value)) index = *large_index;
-      if (index < 0 || index > std::numeric_limits<int>::max() ||
+      if (index < 0 || index > (std::numeric_limits<int>::max)() ||
           !segment.name || !live_path::Normalize(*segment.name).empty()) return false;
       segment.index = static_cast<int>(index);
     }
-    if (compatibility && live_path::Normalize(segment.type) == L"dokument" && path->size() + 1 < entries->size())
-      segment.name.reset();
     path->push_back(std::move(segment));
   }
   return true;
@@ -114,51 +108,17 @@ class Provider {
   std::vector<Handle> handles_;
 };
 
-inline std::optional<Handle> Resolve(IUIAutomation *automation, HWND draw,
+inline std::optional<Handle> Resolve(IUIAutomation *automation, HWND window,
     const EncodableValue &target, const std::function<bool()> &cancelled) {
   std::vector<live_path::Segment> path;
-  bool includes_client = false;
-  bool compatibility = true;
-  if (!Parse(target, &path, &includes_client, &compatibility) || cancelled() || !IsWindow(draw)) return std::nullopt;
+  if (!Parse(target, &path) || cancelled() || !IsWindow(window)) return std::nullopt;
   Handle root;
   ComPtr<IUIAutomationTreeWalker> walker;
-  if (FAILED(automation->ElementFromHandle(draw, &root)) ||
+  if (FAILED(automation->ElementFromHandle(window, &root)) ||
       FAILED(automation->get_RawViewWalker(&walker))) return std::nullopt;
   Provider provider(walker.Get(), cancelled);
-  if (!compatibility) {
-    auto result = live_path::Resolve(root, path, provider, false);
-    return result.failed || result.ambiguous || provider.Cancelled() ? std::nullopt : result.node;
-  }
-  const auto root_metadata = provider.Read(root);
-  const auto children = provider.Children(root);
-  if (!root_metadata.valid || !children) return std::nullopt;
-  bool named_client = false;
-  for (const auto &child : *children) {
-    const auto metadata = provider.Read(child);
-    if (!metadata.valid || provider.Cancelled()) return std::nullopt;
-    if (live_path::TitleWrapper(metadata, root_metadata)) named_client = true;
-  }
-  std::vector<std::vector<live_path::Segment>> paths{path};
-  if (includes_client && named_client && path.size() > 2) {
-    auto variant = path;
-    variant.erase(variant.begin() + 1);
-    paths.push_back(std::move(variant));
-  } else if (!includes_client && !named_client) {
-    auto variant = path;
-    variant.insert(variant.begin() + 1, live_path::Segment{L"", L"", 0});
-    paths.push_back(std::move(variant));
-  }
-  for (const auto &candidate : paths) {
-    auto result = live_path::Resolve(root, candidate, provider);
-    if (result.failed || result.ambiguous || provider.Cancelled()) return std::nullopt;
-    if (result.node) return result.node;
-    auto legacy = candidate;
-    for (auto &segment : legacy) if (segment.type.empty()) segment.type = L"Element";
-    result = live_path::Resolve(root, legacy, provider);
-    if (result.failed || result.ambiguous || provider.Cancelled()) return std::nullopt;
-    if (result.node) return result.node;
-  }
-  return std::nullopt;
+  auto result = live_path::Resolve(root, path, provider);
+  return result.failed || result.ambiguous || provider.Cancelled() ? std::nullopt : result.node;
 }
 } // namespace live_uia
 #endif

@@ -9,7 +9,6 @@ sealed class TargetApplication {
     }
     return switch (raw['kind']) {
       'unconfigured' => const UnconfiguredApplication(),
-      'libreoffice.draw' => const DrawApplication(),
       'windows' => WindowsApplication(
         name: _text(raw['name']),
         executable: _text(raw['executable']),
@@ -46,14 +45,6 @@ class UnconfiguredApplication extends TargetApplication {
   String get name => 'Zielsoftware auswählen';
   @override
   Map<String, Object?> toJson() => {'kind': 'unconfigured'};
-}
-
-class DrawApplication extends TargetApplication {
-  const DrawApplication();
-  @override
-  String get name => 'LibreOffice Draw';
-  @override
-  Map<String, Object?> toJson() => {'kind': 'libreoffice.draw'};
 }
 
 class WindowsApplication extends TargetApplication {

@@ -1,20 +1,26 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:schului/lessons/draw_lesson.dart';
-import 'package:schului/lessons/draw_target.dart';
-import 'package:schului/lessons/draw_targets.dart';
 import 'package:schului/lessons/lesson_content.dart';
+
+import 'sample_lesson.dart';
+
+import 'package:schului/lessons/application_target.dart';
+import 'package:schului/lessons/lesson_model.dart';
 
 void main() {
   test('tool and object links retain their authored paths', () {
-    final tool = steps[1].links.singleWhere((link) => link.text == 'Rechteck');
-    final object = steps[2].links.singleWhere((link) => link.text == 'Objekt');
-    expect(tool.target, same(DrawTargets.rectangleTool));
-    expect(object.target, same(DrawTargets.rectangleObject));
+    final tool = sampleSteps[1].links.singleWhere(
+      (link) => link.text == 'Speichern',
+    );
+    final object = sampleSteps[1].links.singleWhere(
+      (link) => link.text == 'Öffnen',
+    );
+    expect(tool.target, same(saveTarget));
+    expect(object.target, same(openTarget));
     for (final link in [tool, object]) {
       expect(
-        DrawTarget.fromJson(link.target!.toJson()).toJson(),
+        ApplicationTarget.fromJson(link.target!.toJson()).toJson(),
         link.target!.toJson(),
       );
     }
@@ -25,7 +31,7 @@ void main() {
     (tester) async {
       const link = LessonLink(
         'Frei benannt',
-        target: DrawTargets.width,
+        target: saveTarget,
         help: 'Mein Hilfetext',
       );
       final events = <LessonLink?>[];
@@ -59,7 +65,7 @@ void main() {
       await mouse.moveTo(tester.getCenter(find.text('Frei benannt')));
       await tester.pump();
       expect(events.single, same(link));
-      expect(events.single!.target, same(DrawTargets.width));
+      expect(events.single!.target, same(saveTarget));
       await mouse.moveTo(Offset.zero);
       await tester.pump();
       expect(events.last, isNull);

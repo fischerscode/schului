@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'draw_lesson.dart';
+import 'lesson_model.dart';
 import '../src/windows_bridge.dart';
 
 class LessonContent extends StatefulWidget {
@@ -8,7 +8,7 @@ class LessonContent extends StatefulWidget {
     super.key,
     required this.onHover,
     required this.onSection,
-    this.lessons = steps,
+    required this.lessons,
     this.onActivity,
     this.onHint,
   });

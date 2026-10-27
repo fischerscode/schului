@@ -15,10 +15,11 @@ Andere Rechner können andere Programmpfade haben; diese im Editor anpassen.
 Die Zielsoftware muss installiert bzw. bereits geöffnet sein. Manche Anwendungen
 stellen keine geeigneten Accessibility-Elemente für einzelne Hover-Ziele bereit.
 
-Draw ist nur ein optionales Beispiel. start-beispiel.cmd und start-inspector.cmd
-verwenden dieses Beispiel und benötigen LibreOffice. Andere Einheiten benötigen
-kein LibreOffice. Online-Übungen benötigen Internet und Microsoft Edge WebView2.
+start-inspector.cmd mit einer .schului-Datei als Argument öffnet den Inspector
+für diese Unterrichtseinheit. Online-Übungen benötigen Internet und Microsoft
+Edge WebView2.
 
 Den ganzen Programmordner zusammenlassen; die EXE allein genügt nicht.
-Neue Lerndateien verwenden Formatversion 2; alte Draw-Dateien bleiben lesbar.
+Unterstützt werden Lerndateien der Version 2 mit allgemeinen Programmeinstellungen
+und exakten Zielpfaden. Ältere Dateien müssen neu angelegt werden.
 Vor dem Unterricht auf einem Lernenden-PC testen.

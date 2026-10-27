@@ -107,7 +107,6 @@ class _SettingsState extends State<_Settings> {
       _ => '',
     },
   );
-  late bool draw = widget.application is DrawApplication;
   List<ApplicationWindow> windows = [];
   String? error;
   bool loading = false;
@@ -167,7 +166,6 @@ class _SettingsState extends State<_Settings> {
       );
       if (file != null && mounted) {
         setState(() {
-          draw = false;
           executable.text = file.path;
           if (name.text.isEmpty) name.text = file.name;
           windowClass.clear();
@@ -182,17 +180,13 @@ class _SettingsState extends State<_Settings> {
     try {
       Navigator.pop(
         context,
-        draw
-            ? const DrawApplication()
-            : WindowsApplication(
-                name: name.text,
-                executable: executable.text,
-                arguments: arguments.text.isEmpty
-                    ? []
-                    : arguments.text.split('\n'),
-                windowClass: windowClass.text,
-                titleContains: title.text,
-              ),
+        WindowsApplication(
+          name: name.text,
+          executable: executable.text,
+          arguments: arguments.text.isEmpty ? [] : arguments.text.split('\n'),
+          windowClass: windowClass.text,
+          titleContains: title.text,
+        ),
       );
     } on FormatException catch (e) {
       setState(() => error = e.message);
@@ -238,7 +232,6 @@ class _SettingsState extends State<_Settings> {
                 if (candidates.isEmpty) return;
                 final window = candidates.first;
                 setState(() {
-                  draw = false;
                   executable.text = window.executable;
                   name.text = window.executable.split(RegExp(r'[\\/]')).last;
                   windowClass.text = window.windowClass;
@@ -250,14 +243,11 @@ class _SettingsState extends State<_Settings> {
             const SizedBox(height: 16),
             TextField(
               controller: name,
-              enabled: !draw,
               decoration: const InputDecoration(labelText: 'Name'),
-              onChanged: (_) => setState(() => draw = false),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: executable,
-              enabled: !draw,
               decoration: InputDecoration(
                 labelText: 'Programmpfad',
                 suffixIcon: IconButton(
@@ -266,51 +256,34 @@ class _SettingsState extends State<_Settings> {
                   icon: const Icon(Icons.folder_open_outlined),
                 ),
               ),
-              onChanged: (_) => setState(() => draw = false),
             ),
-            if (!draw)
-              ExpansionTile(
-                title: const Text('Start und Fenster'),
-                children: [
-                  TextField(
-                    controller: arguments,
-                    minLines: 2,
-                    maxLines: 5,
-                    decoration: const InputDecoration(
-                      labelText: 'Startargumente',
-                      helperText: 'Ein Argument pro Zeile. Kein Shell-Befehl.',
-                    ),
+            ExpansionTile(
+              title: const Text('Start und Fenster'),
+              children: [
+                TextField(
+                  controller: arguments,
+                  minLines: 2,
+                  maxLines: 5,
+                  decoration: const InputDecoration(
+                    labelText: 'Startargumente',
+                    helperText: 'Ein Argument pro Zeile. Kein Shell-Befehl.',
                   ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: windowClass,
-                    decoration: const InputDecoration(
-                      labelText: 'Fensterklasse (optional)',
-                    ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: windowClass,
+                  decoration: const InputDecoration(
+                    labelText: 'Fensterklasse (optional)',
                   ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: title,
-                    decoration: const InputDecoration(
-                      labelText: 'Fenstertitel enthält (optional)',
-                    ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: title,
+                  decoration: const InputDecoration(
+                    labelText: 'Fenstertitel enthält (optional)',
                   ),
-                ],
-              ),
-            CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('LibreOffice Draw'),
-              value: draw,
-              onChanged: (value) => setState(() {
-                draw = value ?? false;
-                if (draw) {
-                  name.text = 'LibreOffice Draw';
-                  executable.clear();
-                  arguments.clear();
-                  windowClass.clear();
-                  title.clear();
-                }
-              }),
+                ),
+              ],
             ),
             if (error != null)
               Text(

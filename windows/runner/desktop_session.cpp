@@ -4,15 +4,10 @@
 #include <UIAutomation.h>
 #include <algorithm>
 #include <chrono>
-#include <cwctype>
 #include <filesystem>
 #include <fstream>
 #include <functional>
-#include <set>
-#include <shellapi.h>
-#include <shlwapi.h>
 #include <sstream>
-#include <tlhelp32.h>
 #include <wrl/client.h>
 
 using flutter::EncodableList;
@@ -188,48 +183,6 @@ unsigned long long FileTimeValue(const FILETIME &value) {
   return (static_cast<unsigned long long>(value.dwHighDateTime) << 32) |
          value.dwLowDateTime;
 }
-struct ProcessDetails {
-  std::wstring path;
-  unsigned long long created = 0;
-  DWORD error = 0;
-};
-ProcessDetails ReadProcess(DWORD pid) {
-  ProcessDetails result;
-  HANDLE process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
-  if (!process) {
-    result.error = GetLastError();
-    return result;
-  }
-  wchar_t path[32768]{};
-  DWORD length = 32768;
-  if (QueryFullProcessImageNameW(process, 0, path, &length))
-    result.path = path;
-  else
-    result.error = GetLastError();
-  FILETIME created{}, exited{}, kernel{}, user{};
-  if (GetProcessTimes(process, &created, &exited, &kernel, &user))
-    result.created = FileTimeValue(created);
-  else
-    result.error = GetLastError();
-  CloseHandle(process);
-  return result;
-}
-bool IsOfficeProcess(const ProcessDetails &process) {
-  auto name = std::filesystem::path(process.path).filename().wstring();
-  std::transform(name.begin(), name.end(), name.begin(),
-                 [](wchar_t c) { return std::towlower(c); });
-  return name == L"soffice.bin" || name == L"soffice.exe";
-}
-DWORD ReadPidFile(const std::filesystem::path &path) {
-  if (path.empty())
-    return 0;
-  std::ifstream input(path);
-  unsigned long long pid = 0;
-  if (!(input >> pid) || !pid || pid > MAXDWORD)
-    return 0;
-  input >> std::ws;
-  return input.eof() ? static_cast<DWORD>(pid) : 0;
-}
 DWORD Place(HWND window, const RECT &rect, HWND order) {
   if (!window)
     return ERROR_INVALID_WINDOW_HANDLE;
@@ -298,7 +251,7 @@ bool DesktopSession::ConfigureApplication(const EncodableValue &value) {
   auto config = target_app::Parse(value);
   if (!config || captured_ || launched_pid_) return false;
   application_ = *config;
-  draw_adapter_ = config->draw;
+  configured_ = true;
   return true;
 }
 EncodableValue DesktopSession::ApplicationWindows() { return EncodableValue(target_app::List(&application_)); }
@@ -307,13 +260,14 @@ bool DesktopSession::SelectApplicationWindow(int64_t handle) {
   auto candidate = target_app::Read(window);
   if (!candidate || !target_app::Matches(*candidate, application_) || captured_) return false;
   preferred_window_ = window;
-  draw_ = nullptr;
+  target_ = nullptr;
   Tick();
   return true;
 }
-bool DesktopSession::StartApplication(std::string *error) {
+bool DesktopSession::Start(std::string *error) {
   startup_error_.clear();
-  if (IsWindow(draw_.load()) || FindDraw()) return true;
+  if (!configured_) { startup_error_ = *error = "Zuerst Zielsoftware auswählen."; return false; }
+  if (IsWindow(target_.load()) || FindTargetWindow()) return true;
   if (target_app::Windows(&application_).size() > 1) { *error = startup_error_; return false; }
   startup_error_.clear();
   FILETIME now{}; GetSystemTimeAsFileTime(&now);
@@ -338,121 +292,8 @@ bool DesktopSession::StartApplication(std::string *error) {
   CloseHandle(process.hThread); CloseHandle(process.hProcess);
   return true;
 }
-bool DesktopSession::Start(std::string *error) {
-  if (!application_.draw) return StartApplication(error);
-  startup_error_.clear();
-  if (IsWindow(draw_.load()))
-    return true;
-  if (launched_pid_ && FindDraw())
-    return true;
-  if (launched_pid_) {
-    HANDLE launcher = OpenProcess(SYNCHRONIZE, FALSE, launched_pid_);
-    const bool running =
-        launcher && WaitForSingleObject(launcher, 0) == WAIT_TIMEOUT;
-    if (launcher)
-      CloseHandle(launcher);
-    if (running) {
-      startup_error_ = *error = "Draw startet noch. Bitte kurz warten.";
-      return false;
-    }
-    // A launcher may exit while its real office process is still starting.
-    if (std::any_of(session_processes_.begin(), session_processes_.end(),
-                    [](const auto &entry) {
-                      return entry.second != 0 &&
-                             ReadProcess(entry.first).created == entry.second;
-                    })) {
-      startup_error_ = *error = "Draw startet noch. Bitte kurz warten.";
-      return false;
-    }
-    FILETIME now{};
-    GetSystemTimeAsFileTime(&now);
-    if (launch_time_ && FileTimeValue(now) - launch_time_ < 300000000ULL) {
-      startup_error_ = *error = "Draw startet noch. Bitte kurz warten.";
-      return false;
-    }
-    launched_pid_ = 0;
-    captured_ = false;
-  }
-  const auto root = ExecutableDirectory();
-  std::vector<std::filesystem::path> candidates = {
-      root / L"LibreOfficePortable" / L"LibreOfficeDrawPortable.exe",
-      root / L"LibreOfficePortable" / L"LibreOfficePortable.exe",
-      L"C:\\Program Files\\LibreOffice\\program\\soffice.exe",
-      L"C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe"};
-  wchar_t custom[32768]{};
-  if (GetEnvironmentVariableW(L"SCHULUI_DRAW_PATH", custom, 32768))
-    candidates.insert(candidates.begin(), custom);
-  std::filesystem::path executable;
-  for (const auto &candidate : candidates)
-    if (std::filesystem::is_regular_file(candidate)) {
-      executable = candidate;
-      break;
-    }
-  if (executable.empty()) {
-    startup_error_ = *error =
-        "LibreOffice nicht gefunden. SCHULUI_DRAW_PATH auf den "
-        "Programmpfad setzen.";
-    return false;
-  }
-  wchar_t temp[MAX_PATH]{};
-  GetTempPathW(MAX_PATH, temp);
-  FILETIME started{};
-  GetSystemTimeAsFileTime(&started);
-  launch_time_ = FileTimeValue(started);
-  auto profile = std::filesystem::path(temp) /
-                 (L"schului-profile-" + std::to_wstring(GetCurrentProcessId()) +
-                  L"-" + std::to_wstring(launch_time_));
-  pid_file_ = profile / L"draw.pid";
-  launched_executable_ = executable;
-  session_processes_.clear();
-  connection_method_.clear();
-  std::error_code filesystem_error;
-  std::filesystem::create_directories(profile / L"user", filesystem_error);
-  if (filesystem_error) {
-    startup_error_ = *error =
-        "Das temporäre Draw-Profil konnte nicht angelegt werden.";
-    return false;
-  }
-  std::ofstream settings(profile / L"user" / L"registrymodifications.xcu");
-  settings
-      << R"(<?xml version="1.0" encoding="UTF-8"?><oor:items xmlns:oor="http://openoffice.org/2001/registry" xmlns:xs="http://www.w3.org/2001/XMLSchema"><item oor:path="/org.openoffice.Office.Common/Misc"><prop oor:name="FirstRun" oor:op="fuse"><value>false</value></prop><prop oor:name="ShowTipOfTheDay" oor:op="fuse"><value>false</value></prop></item><item oor:path="/org.openoffice.Setup/Office"><prop oor:name="MigrationCompleted" oor:op="fuse"><value>true</value></prop></item><item oor:path="/org.openoffice.Setup/Product"><prop oor:name="WhatsNew" oor:op="fuse"><value>false</value></prop><prop oor:name="WhatsNewDialog" oor:op="fuse"><value>false</value></prop></item><item oor:path="/org.openoffice.Office.Update/Update"><prop oor:name="Enabled" oor:op="fuse" oor:finalized="true"><value>false</value></prop></item><item oor:path="/org.openoffice.Office.Jobs/Jobs/org.openoffice.Office.Jobs:Job['UpdateCheck']/Arguments"><prop oor:name="AutoCheckEnabled" oor:type="xs:boolean" oor:op="fuse" oor:finalized="true"><value>false</value></prop><prop oor:name="AutoDownloadEnabled" oor:type="xs:boolean" oor:op="fuse" oor:finalized="true"><value>false</value></prop></item></oor:items>)";
-  settings.close();
-  if (!settings) {
-    startup_error_ = *error =
-        "Das Draw-Lernprofil konnte nicht vorbereitet werden.";
-    return false;
-  }
-  wchar_t url[32768]{};
-  DWORD url_length = 32768;
-  if (FAILED(UrlCreateFromPathW(profile.c_str(), url, &url_length, 0))) {
-    startup_error_ = *error =
-        "Der Draw-Profilpfad konnte nicht erzeugt werden.";
-    return false;
-  }
-  std::wstring command = L"\"" + executable.wstring() +
-                         L"\" --draw \"-env:UserInstallation=" + url +
-                         L"\" \"--pidfile=" + pid_file_.wstring() + L"\"";
-  STARTUPINFOW startup{};
-  startup.cb = sizeof(startup);
-  PROCESS_INFORMATION process{};
-  // Dedicated profile prevents taking over already-open pupil documents.
-  if (!CreateProcessW(executable.c_str(), command.data(), nullptr, nullptr,
-                      FALSE, 0, nullptr, executable.parent_path().c_str(),
-                      &startup, &process)) {
-    startup_error_ = *error =
-        "LibreOffice konnte nicht gestartet werden (Windows-Fehler " +
-        std::to_string(GetLastError()) + ").";
-    return false;
-  }
-  launched_pid_ = process.dwProcessId;
-  session_processes_[launched_pid_] = ReadProcess(launched_pid_).created;
-  CloseHandle(process.hThread);
-  CloseHandle(process.hProcess);
-  return true;
-}
-
-HWND DesktopSession::FindDraw() {
-  if (!application_.draw) {
+HWND DesktopSession::FindTargetWindow() {
+  if (!configured_) return nullptr;
     if (auto preferred = target_app::Read(preferred_window_); preferred && target_app::Matches(*preferred, application_)) { startup_error_.clear(); return preferred_window_; }
     auto windows = target_app::Windows(&application_);
     if (windows.size() == 1) { startup_error_.clear(); connection_method_ = "configured-application"; return windows.front().handle; }
@@ -462,83 +303,6 @@ HWND DesktopSession::FindDraw() {
       if (FileTimeValue(now) - launch_time_ >= 300000000ULL) startup_error_ = "Kein passendes Fenster gefunden. Software öffnen und Fensterauswahl bzw. Programmeinstellungen prüfen.";
     }
     return nullptr;
-  }
-  if (!launched_pid_)
-    return nullptr;
-  // Prefer the actual office PID, independent of launcher/updater ancestry.
-  const DWORD office_pid = ReadPidFile(pid_file_);
-  const auto office = office_pid ? ReadProcess(office_pid) : ProcessDetails{};
-  const bool valid_pid = office.created >= launch_time_ &&
-                         office.created != 0 && IsOfficeProcess(office);
-  HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-  if (snapshot != INVALID_HANDLE_VALUE) {
-    PROCESSENTRY32W entry{};
-    entry.dwSize = sizeof(entry);
-    std::vector<std::pair<DWORD, DWORD>> processes;
-    if (Process32FirstW(snapshot, &entry))
-      do {
-        processes.emplace_back(entry.th32ProcessID, entry.th32ParentProcessID);
-      } while (Process32NextW(snapshot, &entry));
-    CloseHandle(snapshot);
-    bool changed = true;
-    while (changed) {
-      changed = false;
-      for (const auto &process : processes) {
-        auto parent = session_processes_.find(process.second);
-        if (parent == session_processes_.end())
-          continue;
-        // Retain exited parents, but do not follow reused PIDs.
-        auto current_parent = ReadProcess(process.second);
-        if (current_parent.created && current_parent.created != parent->second)
-          continue;
-        auto details = ReadProcess(process.first);
-        if (!details.created || details.created < launch_time_ ||
-            details.created < parent->second)
-          continue;
-        if (!session_processes_.count(process.first) ||
-            session_processes_[process.first] != details.created) {
-          session_processes_[process.first] = details.created;
-          changed = true;
-        }
-      }
-    }
-  }
-  struct Search {
-    DesktopSession *session;
-    DWORD office_pid;
-    HWND authoritative = nullptr;
-    std::vector<HWND> descendants;
-  } search{this, valid_pid ? office_pid : 0, nullptr, {}};
-  EnumWindows(
-      [](HWND hwnd, LPARAM parameter) -> BOOL {
-        auto *search = reinterpret_cast<Search *>(parameter);
-        if (!IsWindowVisible(hwnd) || GetWindow(hwnd, GW_OWNER))
-          return TRUE;
-        wchar_t title[1024]{};
-        GetWindowTextW(hwnd, title, 1024);
-        if (std::wstring(title).find(L"LibreOffice Draw") == std::wstring::npos)
-          return TRUE;
-        DWORD pid = 0;
-        GetWindowThreadProcessId(hwnd, &pid);
-        if (pid == search->office_pid) {
-          search->authoritative = hwnd;
-          return FALSE;
-        }
-        auto known = search->session->session_processes_.find(pid);
-        if (known != search->session->session_processes_.end()) {
-          auto details = ReadProcess(pid);
-          if (details.created == known->second && IsOfficeProcess(details))
-            search->descendants.push_back(hwnd);
-        }
-        return TRUE;
-      },
-      reinterpret_cast<LPARAM>(&search));
-  connection_method_ = search.authoritative             ? "pidfile"
-                       : search.descendants.size() == 1 ? "tracked-process"
-                                                        : "not-found";
-  return search.authoritative             ? search.authoritative
-         : search.descendants.size() == 1 ? search.descendants.front()
-                                          : nullptr;
 }
 
 void DesktopSession::Tick() {
@@ -549,61 +313,61 @@ void DesktopSession::Tick() {
   monitor_ = info.rcWork;
   const auto bounds = session_layout::SplitWorkArea(monitor_);
   const RECT left = bounds.lesson;
-  draw_rect_ = bounds.draw;
-  HWND draw = draw_.load();
-  if (draw && !application_.draw) {
-    const auto candidate = target_app::Read(draw);
-    if (!candidate || !target_app::Matches(*candidate, application_)) { draw_ = nullptr; draw = nullptr; }
+  target_rect_ = bounds.target;
+  HWND target = target_.load();
+  if (target) {
+    const auto candidate = target_app::Read(target);
+    if (!candidate || !target_app::Matches(*candidate, application_)) { target_ = nullptr; target = nullptr; }
   }
   if (session_layout::ApplyVisibility(
-          draw, lesson_, overlay_, hint_, draw_connected_once_,
-          lesson_hidden_for_draw_) == session_layout::Visibility::closed) {
+          target, lesson_, overlay_, hint_, target_connected_once_,
+          lesson_hidden_for_target_) == session_layout::Visibility::closed) {
     active_ = false;
     if (learning_app_) ShowWindow(learning_app_, SW_HIDE);
     PostQuitMessage(0);
     return;
   }
-  if (!IsWindow(draw)) {
-    draw = FindDraw();
-    draw_ = draw;
-    if (draw && !captured_) {
-      GetWindowPlacement(draw, &original_);
+  if (!IsWindow(target)) {
+    target = FindTargetWindow();
+    target_ = target;
+    if (target && !captured_) {
+      GetWindowPlacement(target, &original_);
       captured_ = true;
-      draw_connected_once_ = true;
-      if (IsWindowEnabled(draw) && !IsIconic(draw)) {
-        ShowWindow(draw, SW_RESTORE);
-        placement_error_ = Place(draw, draw_rect_, nullptr);
+      target_connected_once_ = true;
+      if (IsWindowEnabled(target) && !IsIconic(target)) {
+        ShowWindow(target, SW_RESTORE);
+        placement_error_ = Place(target, target_rect_, nullptr);
       }
     }
   }
   if (session_layout::ApplyVisibility(
-          draw, lesson_, overlay_, hint_, draw_connected_once_,
-          lesson_hidden_for_draw_) == session_layout::Visibility::minimized) {
+          target, lesson_, overlay_, hint_, target_connected_once_,
+          lesson_hidden_for_target_) == session_layout::Visibility::minimized) {
     active_ = false;
     if (learning_app_) ShowWindow(learning_app_, SW_HIDE);
     return;
   }
   HWND foreground = GetForegroundWindow();
-  DWORD foreground_pid = 0, draw_pid = 0;
+  DWORD foreground_pid = 0, target_pid = 0;
   GetWindowThreadProcessId(foreground, &foreground_pid);
-  if (draw)
-    GetWindowThreadProcessId(draw, &draw_pid);
+  if (target)
+    GetWindowThreadProcessId(target, &target_pid);
   active_ = foreground == lesson_ || foreground == hint_ || foreground == learning_app_ ||
-            (draw_pid && foreground_pid == draw_pid);
+            (target_pid && foreground_pid == target_pid);
   Place(lesson_, left, active_ ? HWND_TOPMOST : HWND_NOTOPMOST);
-  if (draw && active_ && IsWindowEnabled(draw)) {
-    if (IsZoomed(draw))
-      ShowWindow(draw, SW_RESTORE);
+  if (target && active_ && IsWindowEnabled(target)) {
+    if (IsZoomed(target))
+      ShowWindow(target, SW_RESTORE);
     RECT actual{};
-    GetWindowRect(draw, &actual);
-    if (!EqualRect(&actual, &draw_rect_))
-      placement_error_ = Place(draw, draw_rect_, nullptr);
+    GetWindowRect(target, &actual);
+    if (!EqualRect(&actual, &target_rect_))
+      placement_error_ = Place(target, target_rect_, nullptr);
   }
   // Hide decorations over dialogs and unrelated applications.
   bool decorate =
-      active_ && draw && IsWindowEnabled(draw) && IsWindowVisible(draw) && !learning_app_visible_;
+      active_ && target && IsWindowEnabled(target) && IsWindowVisible(target) && !learning_app_visible_;
   if (overlay_) {
-    Place(overlay_, draw_rect_, decorate ? HWND_TOPMOST : HWND_NOTOPMOST);
+    Place(overlay_, target_rect_, decorate ? HWND_TOPMOST : HWND_NOTOPMOST);
     ShowWindow(overlay_, decorate ? SW_SHOWNOACTIVATE : SW_HIDE);
   }
   if (hint_) {
@@ -611,8 +375,8 @@ void DesktopSession::Tick() {
     const LONG w = static_cast<LONG>(360 * scale),
                h = static_cast<LONG>(210 * scale),
                margin = static_cast<LONG>(24 * scale);
-    RECT rect{draw_rect_.right - w - margin, draw_rect_.bottom - h - margin,
-              draw_rect_.right - margin, draw_rect_.bottom - margin};
+    RECT rect{target_rect_.right - w - margin, target_rect_.bottom - h - margin,
+              target_rect_.right - margin, target_rect_.bottom - margin};
     Place(hint_, rect, decorate ? HWND_TOPMOST : HWND_NOTOPMOST);
     ShowWindow(hint_, decorate && hint_visible_ ? SW_SHOWNOACTIVATE : SW_HIDE);
   }
@@ -681,7 +445,7 @@ void DesktopSession::InspectHoverBounds() {
       };
       if (automation) {
         // Resolve the complete path afresh, including newly created objects.
-        const auto element = live_uia::Resolve(automation.Get(), draw_.load(), target, cancelled);
+        const auto element = live_uia::Resolve(automation.Get(), target_.load(), target, cancelled);
         if (element && !cancelled()) {
           RECT rect{};
           BOOL offscreen = TRUE;
@@ -748,9 +512,9 @@ void DesktopSession::Restore() {
     ShowWindow(overlay_, SW_HIDE);
   if (hint_)
     ShowWindow(hint_, SW_HIDE);
-  if (captured_ && IsWindow(draw_.load())) {
-    const auto candidate = application_.draw ? std::optional<target_app::Window>{} : target_app::Read(draw_.load());
-    if (application_.draw || (candidate && target_app::Matches(*candidate, application_))) SetWindowPlacement(draw_.load(), &original_);
+  if (captured_ && IsWindow(target_.load())) {
+    const auto candidate = target_app::Read(target_.load());
+    if (candidate && target_app::Matches(*candidate, application_)) SetWindowPlacement(target_.load(), &original_);
   }
 }
 EncodableValue DesktopSession::State(bool include_nodes) {
@@ -799,16 +563,15 @@ EncodableValue DesktopSession::State(bool include_nodes) {
       {EncodableValue("hoverGeneration"), EncodableValue(static_cast<int64_t>(hover_generation_.load()))},
       {EncodableValue("hoverGeometryGeneration"), EncodableValue(static_cast<int64_t>(hover_geometry_generation_))},
       {EncodableValue("connected"),
-       EncodableValue(IsWindow(draw_.load()) != FALSE)},
+       EncodableValue(IsWindow(target_.load()) != FALSE)},
       {EncodableValue("active"), EncodableValue(active_)},
-      {EncodableValue("drawLeft"),
-       EncodableValue(static_cast<double>(draw_rect_.left))},
-      {EncodableValue("drawTop"),
-       EncodableValue(static_cast<double>(draw_rect_.top))},
+      {EncodableValue("targetLeft"),
+       EncodableValue(static_cast<double>(target_rect_.left))},
+      {EncodableValue("targetTop"),
+       EncodableValue(static_cast<double>(target_rect_.top))},
       {EncodableValue("targets"), EncodableValue(targets)},
       {EncodableValue("accessibilityReady"),
-       EncodableValue(accessibility_ready_)},
-      {EncodableValue("sidebarVisible"), EncodableValue(sidebar_visible_)}});
+       EncodableValue(accessibility_ready_)}});
 }
 
 void DesktopSession::Inspect() {
@@ -836,13 +599,13 @@ void DesktopSession::Inspect() {
       std::vector<AccessibleTarget> targets;
       std::string tree;
       std::vector<AccessibilityNode> nodes;
-      bool ready = false, sidebar = false;
+      bool ready = false;
       HRESULT accessibility_status = automation_status;
-      HWND draw = draw_.load();
-      if (automation && IsWindow(draw)) {
+      HWND target = target_.load();
+      if (automation && IsWindow(target)) {
         ComPtr<IUIAutomationElement> root;
         stage("element-from-handle");
-        accessibility_status = automation->ElementFromHandle(draw, &root);
+        accessibility_status = automation->ElementFromHandle(target, &root);
         if (SUCCEEDED(accessibility_status)) {
           stage("raw-tree");
           tree = AccessibilityTree(automation.Get(), root.Get(), stop_, &nodes,
@@ -884,12 +647,6 @@ void DesktopSession::Inspect() {
               if (label.empty() || rect.right <= rect.left ||
                   rect.bottom <= rect.top)
                 continue;
-              CONTROLTYPEID type = 0;
-              element->get_CurrentControlType(&type);
-              if (draw_adapter_ && ((label == "Seitenleiste" && type == UIA_PaneControlTypeId) ||
-                  (label == "Seitenleiste schließen" &&
-                   type == UIA_ButtonControlTypeId)))
-                sidebar = true;
               targets.push_back({label, rect});
             }
           }
@@ -903,7 +660,6 @@ void DesktopSession::Inspect() {
         inspection_stage_ = "snapshot-ready";
         accessibility_error_ = accessibility_status;
         accessibility_ready_ = ready;
-        sidebar_visible_ = sidebar;
       }
       for (int i = 0; i < 10 && !stop_; ++i)
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -935,52 +691,22 @@ bool DesktopSession::ExportConnection(std::string *path) {
   report << "Schului Verbindungsdiagnose\n"
          << "launcher_pid=" << launched_pid_ << '\n'
          << "executable=" << Utf8(launched_executable_.wstring()) << '\n'
-         << "pid_file=" << Utf8(pid_file_.wstring()) << '\n'
-         << "office_pid=" << ReadPidFile(pid_file_) << '\n'
          << "connection_method=" << connection_method_ << '\n'
-         << "connected=" << IsWindow(draw_.load()) << '\n'
+         << "connected=" << IsWindow(target_.load()) << '\n'
          << "active=" << active_ << '\n'
          << "placement_error=" << placement_error_ << '\n'
          << "startup_error=" << startup_error_ << '\n';
-  for (const auto &entry : session_processes_) {
-    auto details = ReadProcess(entry.first);
-    report << "tracked_pid=" << entry.first << " created=" << entry.second
-           << " current_created=" << details.created
-           << " error=" << details.error << " path=" << Utf8(details.path)
-           << '\n';
+  for (const auto &window : target_app::Windows(&application_)) {
+    DWORD pid = 0;
+    GetWindowThreadProcessId(window.handle, &pid);
+    RECT rect{};
+    GetWindowRect(window.handle, &rect);
+    report << "window=" << reinterpret_cast<uintptr_t>(window.handle)
+           << " pid=" << pid << " title=" << Utf8(window.title)
+           << " class=" << Utf8(window.window_class)
+           << " path=" << Utf8(window.executable) << " rect=" << rect.left
+           << ',' << rect.top << ',' << rect.right << ',' << rect.bottom << '\n';
   }
-  struct Windows {
-    std::ostringstream *report;
-    std::map<DWORD, unsigned long long> *known;
-  } windows{&report, &session_processes_};
-  EnumWindows(
-      [](HWND hwnd, LPARAM raw) -> BOOL {
-        auto *data = reinterpret_cast<Windows *>(raw);
-        wchar_t title[1024]{}, class_name[256]{};
-        GetWindowTextW(hwnd, title, 1024);
-        const std::wstring text = title;
-        DWORD pid = 0;
-        GetWindowThreadProcessId(hwnd, &pid);
-        if (text.find(L"LibreOffice") == std::wstring::npos &&
-            !data->known->count(pid))
-          return TRUE;
-        GetClassNameW(hwnd, class_name, 256);
-        auto process = ReadProcess(pid);
-        RECT rect{};
-        GetWindowRect(hwnd, &rect);
-        *data->report << "window=" << reinterpret_cast<uintptr_t>(hwnd)
-                      << " pid=" << pid << " title=" << Utf8(text)
-                      << " class=" << Utf8(class_name)
-                      << " visible=" << IsWindowVisible(hwnd)
-                      << " enabled=" << IsWindowEnabled(hwnd) << " owner="
-                      << reinterpret_cast<uintptr_t>(GetWindow(hwnd, GW_OWNER))
-                      << " process_error=" << process.error
-                      << " path=" << Utf8(process.path) << " rect=" << rect.left
-                      << ',' << rect.top << ',' << rect.right << ','
-                      << rect.bottom << '\n';
-        return TRUE;
-      },
-      reinterpret_cast<LPARAM>(&windows));
   {
     std::lock_guard<std::mutex> lock(mutex_);
     report << "inspection_stage=" << inspection_stage_ << '\n';
@@ -1010,53 +736,4 @@ bool DesktopSession::ExportConnection(std::string *path) {
     }
   }
   return false;
-}
-
-void DesktopSession::SmokeTest() {
-  Export(nullptr);
-  ExportConnection(nullptr);
-  std::ofstream report(ExecutableDirectory() / L"smoke-test.txt");
-  RECT lesson_rect{}, overlay_rect{}, hint_rect{}, draw_rect{};
-  GetWindowRect(lesson_, &lesson_rect);
-  GetWindowRect(overlay_, &overlay_rect);
-  GetWindowRect(hint_, &hint_rect);
-  if (IsWindow(draw_.load()))
-    GetWindowRect(draw_.load(), &draw_rect);
-  auto print_rect = [&](const char *name, const RECT &rect) {
-    report << name << '=' << rect.left << ',' << rect.top << ',' << rect.right
-           << ',' << rect.bottom << '\n';
-  };
-  print_rect("work_area", monitor_);
-  print_rect("lesson", lesson_rect);
-  print_rect("draw", draw_rect);
-  print_rect("overlay", overlay_rect);
-  print_rect("hint", hint_rect);
-  report << "connection_method=" << connection_method_ << '\n';
-  report << "connected=" << IsWindow(draw_.load()) << '\n'
-         << "active=" << active_ << '\n';
-  report << "overlay_visible=" << IsWindowVisible(overlay_) << '\n';
-  report << "overlay_click_through="
-         << ((GetWindowLongPtr(overlay_, GWL_EXSTYLE) & WS_EX_TRANSPARENT) != 0)
-         << '\n';
-  report << "hint_visible=" << IsWindowVisible(hint_) << '\n';
-  std::lock_guard<std::mutex> lock(mutex_);
-  report << "accessibility_ready=" << accessibility_ready_ << '\n'
-         << "element_count=" << targets_.size() << '\n';
-  std::set<std::string> node_ids;
-  bool selection_exists = false;
-  for (const auto &node : nodes_) {
-    node_ids.insert(node.id);
-    if (node.id == selected_node_id_)
-      selection_exists = true;
-  }
-  BYTE alpha = 0;
-  DWORD flags = 0;
-  COLORREF key = 0;
-  GetLayeredWindowAttributes(overlay_, &key, &alpha, &flags);
-  report << "node_count=" << nodes_.size() << '\n'
-         << "unique_node_ids=" << node_ids.size() << '\n'
-         << "inspector_mode=" << inspector_mode_ << '\n'
-         << "selected_node_exists=" << selection_exists << '\n'
-         << "selected_node_id=" << selected_node_id_ << '\n'
-         << "overlay_alpha=" << static_cast<int>(alpha) << '\n';
 }

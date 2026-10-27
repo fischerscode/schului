@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import '../lessons/draw_lesson.dart' as example;
 import '../lessons/lesson_model.dart';
 import '../lessons/application_target.dart';
 import 'target_application.dart';
@@ -20,12 +19,6 @@ class LessonDocument {
   final String title;
   final TargetApplication application;
   final List<LessonStep> steps;
-
-  factory LessonDocument.example() => LessonDocument(
-    title: 'Draw entdecken',
-    steps: example.steps,
-    application: const DrawApplication(),
-  );
 
   factory LessonDocument.empty() => LessonDocument(
     title: 'Neue Lernumgebung',
@@ -86,18 +79,12 @@ class LessonDocument {
     final Object? raw = jsonDecode(source);
     if (raw is! Map<String, Object?> ||
         raw['format'] != 'schului.lesson' ||
-        (raw['version'] != 1 && raw['version'] != 2)) {
+        raw['version'] != 2) {
       throw const FormatException(
-        'Keine unterstützte schului-Lerndatei (Version 1 oder 2).',
+        'Keine unterstützte schului-Lerndatei (Version 2).',
       );
     }
-    final application = raw['version'] == 1
-        ? (raw['application'] == 'libreoffice.draw'
-              ? const DrawApplication()
-              : throw const FormatException(
-                  'Unbekannte Zielsoftware in Version 1.',
-                ))
-        : TargetApplication.fromJson(raw['application']);
+    final application = TargetApplication.fromJson(raw['application']);
     final result = <LessonStep>[];
     for (final entry in _list(raw['steps'])) {
       final step = _map(entry);
@@ -151,10 +138,6 @@ class LessonDocument {
             throw const FormatException('Ungültiger Hilfetext.');
           }
           final target = span['target'];
-          if (target != null &&
-              _map(target)['includesUnnamedClient'] is! bool) {
-            throw const FormatException('Ungültige Zielpfad-Option.');
-          }
           spans.add(
             LessonLink(
               text,

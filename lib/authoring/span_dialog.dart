@@ -6,21 +6,14 @@ import 'package:flutter/services.dart';
 
 import '../lessons/lesson_model.dart';
 import '../lessons/application_target.dart';
-import '../lessons/draw_targets.dart';
 import '../src/node_selector.dart';
 import 'target_picker.dart';
 import 'target_application.dart';
 
-const targetPresets = <String, ApplicationTarget>{
-  'Rechteck-Werkzeug': DrawTargets.rectangleTool,
-  'Ellipse-Werkzeug': DrawTargets.ellipseTool,
-  'Rechteck-Objekt': DrawTargets.rectangleObject,
-};
-
 Future<LessonSpan?> editSpan(
   BuildContext context,
   LessonSpan span, {
-  TargetApplication application = const DrawApplication(),
+  required TargetApplication application,
 }) => showDialog<LessonSpan>(
   context: context,
   builder: (_) => _SpanDialog(span: span, application: application),
@@ -201,24 +194,6 @@ class _SpanDialogState extends State<_SpanDialog> {
                   maxLines: 4,
                   decoration: const InputDecoration(labelText: 'Hilfetext'),
                 ),
-                const SizedBox(height: 16),
-                if (widget.application is DrawApplication)
-                  DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(
-                      labelText: 'Draw-Zielvorlage',
-                    ),
-                    items: [
-                      for (final name in targetPresets.keys)
-                        DropdownMenuItem(value: name, child: Text(name)),
-                    ],
-                    onChanged: (value) {
-                      final target = targetPresets[value];
-                      if (target != null) {
-                        path.text = const JsonEncoder.withIndent('  ')
-                            .convert(target.toJson());
-                      }
-                    },
-                  ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: path,

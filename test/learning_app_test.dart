@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:schului/main.dart';
 import 'package:schului/src/learning_app_view.dart';
 
+import 'sample_lesson.dart';
+
 void main() {
   testWidgets('lesson activity opens the embedded exercise and keeps section', (
     tester,
@@ -21,7 +23,9 @@ void main() {
       () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(bridge, null),
     );
-    await tester.pumpWidget(const SchoolApp());
+    await tester.pumpWidget(
+      SchoolApp(role: 'lesson', document: sampleDocument()),
+    );
     await tester.pumpAndSettle();
     for (var i = 0; i < 4; i++) {
       await tester.tap(find.byTooltip('Nächster Abschnitt'));
@@ -31,7 +35,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       calls.lastWhere((c) => c.method == 'learningApp').arguments,
-      'https://learningapps.org/show.php?id=px5j6w0gc26',
+      'https://example.org/exercise',
     );
     expect(find.text('Abschnitt 5 von 7'), findsOneWidget);
     expect(tester.takeException(), isNull);

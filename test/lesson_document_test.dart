@@ -5,11 +5,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:schului/authoring/lesson_document.dart';
 import 'package:schului/authoring/lesson_files.dart';
 
+import 'sample_lesson.dart';
+
 void main() {
   test(
     'all authored content, help and exact UIA paths survive a file round trip',
     () async {
-      final document = LessonDocument.example();
+      final document = sampleDocument();
       final directory = await Directory.systemTemp.createTemp('schului-test-');
       addTearDown(() => directory.delete(recursive: true));
       final path = '${directory.path}/lesson.schului';
@@ -28,10 +30,10 @@ void main() {
   );
 
   test('reject unsupported formats and malformed content instead of inventing a lesson', () {
-    final valid =
-        jsonDecode(LessonDocument.example().encode()) as Map<String, Object?>;
+    final valid = jsonDecode(sampleDocument().encode()) as Map<String, Object?>;
     for (final patch in <Map<String, Object?>>[
       {'version': 99},
+      {'version': 1},
       {'application': 'unknown'},
       {'steps': []},
       {'title': ''},

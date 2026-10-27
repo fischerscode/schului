@@ -42,24 +42,21 @@ public:
   void Restore();
   bool Export(std::string *path);
   flutter::EncodableValue State(bool include_nodes = true);
-  void SmokeTest();
   bool ExportConnection(std::string *path);
 
 private:
   void Inspect();
   void InspectHoverBounds();
-  HWND FindDraw();
-  bool StartApplication(std::string *error);
+  HWND FindTargetWindow();
   target_app::Config application_;
-  std::atomic<bool> draw_adapter_{true};
+  bool configured_ = false;
   HWND preferred_window_ = nullptr;
   HWND lesson_ = nullptr, overlay_ = nullptr, hint_ = nullptr, learning_app_ = nullptr;
   bool learning_app_visible_ = false;
   std::string learning_app_url_;
-  std::atomic<HWND> draw_{nullptr};
+  std::atomic<HWND> target_{nullptr};
   DWORD launched_pid_ = 0;
-  std::filesystem::path pid_file_, launched_executable_;
-  std::map<DWORD, unsigned long long> session_processes_;
+  std::filesystem::path launched_executable_;
   unsigned long long launch_time_ = 0;
   std::string connection_method_, startup_error_;
   DWORD placement_error_ = 0;
@@ -75,16 +72,16 @@ private:
   std::condition_variable hover_bounds_changed_;
   std::thread hover_bounds_reader_;
   bool inspector_mode_ = false;
-  bool draw_connected_once_ = false, lesson_hidden_for_draw_ = false;
+  bool target_connected_once_ = false, lesson_hidden_for_target_ = false;
   std::string selected_node_id_;
-  RECT monitor_{}, draw_rect_{};
+  RECT monitor_{}, target_rect_{};
   std::atomic<bool> stop_{false};
   std::thread inspector_;
   std::mutex mutex_;
   std::vector<AccessibleTarget> targets_;
   std::string tree_snapshot_;
   std::vector<AccessibilityNode> nodes_;
-  bool accessibility_ready_ = false, sidebar_visible_ = false;
+  bool accessibility_ready_ = false;
 };
 DesktopSession &Session();
 #endif

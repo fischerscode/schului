@@ -11,11 +11,11 @@ inline Visibility VisibilityFor(bool connected_once, bool exists,
     return connected_once ? Visibility::closed : Visibility::waiting;
   return minimized ? Visibility::minimized : Visibility::visible;
 }
-inline Visibility ApplyVisibility(HWND draw, HWND lesson, HWND overlay,
+inline Visibility ApplyVisibility(HWND target, HWND lesson, HWND overlay,
                                   HWND hint, bool connected_once,
-                                  bool &hidden_for_draw) {
-  const auto visibility = VisibilityFor(connected_once, IsWindow(draw) != FALSE,
-                                        draw && IsIconic(draw));
+                                  bool &hidden_for_target) {
+  const auto visibility = VisibilityFor(connected_once, IsWindow(target) != FALSE,
+                                        target && IsIconic(target));
   if (visibility == Visibility::closed || visibility == Visibility::minimized) {
     if (lesson)
       ShowWindow(lesson, SW_HIDE);
@@ -23,9 +23,9 @@ inline Visibility ApplyVisibility(HWND draw, HWND lesson, HWND overlay,
       ShowWindow(overlay, SW_HIDE);
     if (hint)
       ShowWindow(hint, SW_HIDE);
-    hidden_for_draw = visibility == Visibility::minimized;
-  } else if (hidden_for_draw && visibility == Visibility::visible) {
-    hidden_for_draw = false;
+    hidden_for_target = visibility == Visibility::minimized;
+  } else if (hidden_for_target && visibility == Visibility::visible) {
+    hidden_for_target = false;
     if (lesson)
       ShowWindow(lesson, SW_SHOWNOACTIVATE);
   }
@@ -33,7 +33,7 @@ inline Visibility ApplyVisibility(HWND draw, HWND lesson, HWND overlay,
 }
 struct Bounds {
   RECT lesson;
-  RECT draw;
+  RECT target;
 };
 inline RECT CenteredActivity(const RECT &area, double scale) {
   const LONG width = std::max<LONG>(1, std::min<LONG>(static_cast<LONG>(1100 * scale), area.right - area.left - static_cast<LONG>(48 * scale)));

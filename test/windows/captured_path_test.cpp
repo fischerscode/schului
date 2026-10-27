@@ -16,49 +16,41 @@ void Require(bool value, const char *message) {
 }
 int main() {
   Provider provider{{
-    {{L"Fenster", L"Unbenannt 1 - LibreOffice Draw"}, {1}},
-    {{L"", L"Unbenannt 1 - LibreOffice Draw"}, {2, 3, 4, 5}},
+    {{L"Window", L"Editor"}, {1}},
+    {{L"", L"Editor"}, {2, 3, 4, 5}},
     {{L"", L""}, {}},
-    {{L"Schaltfläche", L"Anderes Werkzeug"}, {}},
+    {{L"Button", L"Open"}, {}},
     {{L"", L""}, {6}},
-    {{L"Symbolleiste", L""}, {}},
-    {{L"Dokument", L"Unbenannt 1 - LibreOffice-Präsentation"}, {7}},
-    {{L"", L"Rectangle"}, {}},
+    {{L"Toolbar", L""}, {}},
+    {{L"Document", L"Exercise"}, {7}},
+    {{L"Button", L"Save"}, {}},
   }};
   const std::vector<int> chain{0, 1, 4, 6, 7};
   auto path = live_path::Capture(chain, provider);
-  Require(path.has_value(), "Capture must resolve uniquely");
-  Require(path->size() == 4, "Mutable client title wrapper must be omitted");
-  Require(!path->front().name, "Root title must be omitted");
-  Require((*path)[1].index == 1, "Index must count only unnamed siblings of the same type");
-  Require(!(*path)[2].name, "Ancestor document title must be omitted");
-  Require(live_path::Resolve(0, *path, provider).node == 7, "Captured path must round-trip");
-  provider.nodes[0].metadata.name = L"Gespeichert - LibreOffice Draw";
-  provider.nodes[1].metadata.name = provider.nodes[0].metadata.name;
-  provider.nodes[6].metadata.name = L"Gespeichert - LibreOffice-Präsentation";
-  Require(live_path::Resolve(0, *path, provider).node == 7, "Renaming must preserve identity");
-  provider.nodes.push_back({{L"", L"Rectangle"}, {}});
+  Require(path && path->size() == 5, "Full raw hierarchy must be preserved");
+  Require(!path->front().name, "Only the root caption must be omitted");
+  Require((*path)[1].name == L"Editor", "Title-like ancestor must remain");
+  Require((*path)[2].index == 1, "Index counts unnamed siblings of the same type");
+  Require((*path)[3].name == L"Exercise", "Document names must remain");
+  Require(live_path::Resolve(0, *path, provider).node == 7, "Path must round trip");
+  provider.nodes[0].metadata.name = L"Changed caption";
+  Require(live_path::Resolve(0, *path, provider).node == 7, "Root caption may change");
+  provider.nodes[6].metadata.name = L"Another exercise";
+  Require(!live_path::Resolve(0, *path, provider).node, "Document names are significant");
+  provider.nodes[6].metadata.name = L"Exercise";
+  provider.nodes.push_back({{L"Button", L"Save"}, {}});
   provider.nodes[6].children.push_back(8);
-  Require(!live_path::Capture(chain, provider), "Ambiguous named targets must not be captured");
+  Require(!live_path::Capture(chain, provider), "Duplicate named targets must be rejected");
   provider.nodes[6].children = {7};
   provider.nodes[2].metadata.valid = false;
   Require(!live_path::Capture(chain, provider), "Unreadable siblings must not shift indices");
   provider.nodes[2].metadata.valid = true;
   provider.cancelled = true;
-  Require(!live_path::Capture(chain, provider), "Cancelled capture must not produce a target");
+  Require(!live_path::Capture(chain, provider), "Cancelled captures must be rejected");
   provider.cancelled = false;
-  // In the other known layout, an unnamed client remains part of the path.
   provider.nodes[1].metadata.name.clear();
   path = live_path::Capture(chain, provider);
-  Require(path && path->size() == 5 && (*path)[1].index == 0,
-      "Unnamed client must remain explicitly indexed");
-  Require(!live_path::Capture(std::vector<int>{}, provider), "Empty chain must be rejected");
-  provider.nodes[1].metadata.name = provider.nodes[0].metadata.name;
-  path = live_path::Capture(chain, provider, false);
-  Require(path && path->size() == 5, "Generic capture must preserve named title-like wrappers");
-  Require((*path)[3].name.has_value(), "Generic document ancestor names must be preserved");
-  Require(live_path::Resolve(0, *path, provider, false).node == 7, "Generic capture must round-trip without Draw adaptations");
-  provider.nodes[6].metadata.name = L"Different document";
-  Require(!live_path::Resolve(0, *path, provider, false).node, "Generic matching must not erase document names");
+  Require(path && (*path)[1].index == 0, "Unnamed ancestors must be indexed");
+  Require(!live_path::Capture(std::vector<int>{}, provider), "Empty chains must be rejected");
   std::cout << "Captured path tests passed.\n";
 }

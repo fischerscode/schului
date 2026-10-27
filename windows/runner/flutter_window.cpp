@@ -56,7 +56,7 @@ bool FlutterWindow::OnCreate() {
     if (method == "start") {
       std::string error;
       if (!Session().Start(&error)) {
-        result->Error("draw_start", error);
+        result->Error("application_start", error);
         return;
       }
     } else if (method == "step") {

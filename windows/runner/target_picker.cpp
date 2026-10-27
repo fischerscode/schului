@@ -71,7 +71,7 @@ TargetPicker::~TargetPicker() {
 
 void TargetPicker::Start(const EncodableValue *application, std::unique_ptr<flutter::MethodResult<EncodableValue>> result) {
   if (result_) { result->Error("busy", "Eine Zielauswahl ist bereits aktiv."); return; }
-  auto config = application ? target_app::Parse(*application) : std::optional<target_app::Config>(target_app::Config{});
+  auto config = application ? target_app::Parse(*application) : std::nullopt;
   if (!config) { result->Error("application", "Zuerst Zielsoftware auswählen."); return; }
   application_ = *config;
   POINT cursor{};
@@ -219,7 +219,7 @@ void TargetPicker::ReadCursor() {
             }
             if (provider.Equal(chain.back(), root)) {
               std::reverse(chain.begin(), chain.end());
-              const auto path = live_path::Capture(chain, provider, application_.draw);
+              const auto path = live_path::Capture(chain, provider);
               BOOL offscreen = TRUE;
               RECT bounds{};
               if (path && SUCCEEDED(element->get_CurrentBoundingRectangle(&bounds)) &&
@@ -233,17 +233,12 @@ void TargetPicker::ReadCursor() {
                   if (segment.index) entry[EncodableValue("index")] = EncodableValue(*segment.index);
                   segments.emplace_back(entry);
                 }
-                // Capture omits named title wrappers, but retains an unnamed client.
-                const bool includes_client = chain.size() > 1 &&
-                    live_path::Normalize(provider.Read(chain[1]).name).empty() &&
-                    (provider.Read(chain[1]).type.empty() || live_path::Normalize(provider.Read(chain[1]).type) == L"element");
                 EncodableMap selector{
                     {EncodableValue("version"), EncodableValue(2)},
                     {EncodableValue("path"), EncodableValue(segments)}};
-                if (!application_.draw) selector[EncodableValue("mode")] = EncodableValue("exact");
+                selector[EncodableValue("mode")] = EncodableValue("exact");
                 update.target = EncodableValue(EncodableMap{
-                  {EncodableValue("selector"), EncodableValue(selector)},
-                  {EncodableValue("includesUnnamedClient"), EncodableValue(includes_client)}});
+                  {EncodableValue("selector"), EncodableValue(selector)}});
                 const auto metadata = provider.Read(element);
                 update.label = Utf8(metadata.name.empty() ? metadata.type : metadata.name);
                 update.bounds = bounds;

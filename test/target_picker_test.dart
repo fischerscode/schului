@@ -6,9 +6,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:schului/authoring/span_dialog.dart';
 import 'package:schului/authoring/target_picker.dart';
-import 'package:schului/lessons/draw_targets.dart';
 import 'package:schului/lessons/lesson_model.dart';
 import 'package:schului/src/schulzeug_theme.dart';
+
+import 'sample_lesson.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -37,6 +38,7 @@ void main() {
                   saved = await editSpan(
                     context,
                     const LessonLink('Mein Werkzeug'),
+                    application: sampleApplication,
                   );
                 },
                 child: const Text('Bearbeiten'),
@@ -63,20 +65,17 @@ void main() {
             .onPressed,
         isNull,
       );
-      completion.complete(DrawTargets.ellipseTool.toJson());
+      completion.complete(openTarget.toJson());
       await tester.pumpAndSettle();
       final pathField = tester.widget<TextField>(
         find.widgetWithText(TextField, 'Zielpfad (JSON, optional)'),
       );
-      expect(
-        jsonDecode(pathField.controller?.text ?? ''),
-        DrawTargets.ellipseTool.toJson(),
-      );
+      expect(jsonDecode(pathField.controller?.text ?? ''), openTarget.toJson());
       await tester.tap(find.text('Übernehmen'));
       await tester.pumpAndSettle();
       expect(saved, isA<LessonLink>());
       if (saved case LessonLink(:final target)) {
-        expect(target?.toJson(), DrawTargets.ellipseTool.toJson());
+        expect(target?.toJson(), openTarget.toJson());
       }
     },
   );
@@ -104,7 +103,8 @@ void main() {
             body: TextButton(
               onPressed: () => editSpan(
                 context,
-                const LessonLink('Rechteck', target: DrawTargets.rectangleTool),
+                const LessonLink('Speichern', target: saveTarget),
+                application: sampleApplication,
               ),
               child: const Text('Bearbeiten'),
             ),
@@ -121,10 +121,7 @@ void main() {
     final field = tester.widget<TextField>(
       find.widgetWithText(TextField, 'Zielpfad (JSON, optional)'),
     );
-    expect(
-      jsonDecode(field.controller?.text ?? ''),
-      DrawTargets.rectangleTool.toJson(),
-    );
+    expect(jsonDecode(field.controller?.text ?? ''), saveTarget.toJson());
     expect(calls, ['begin', 'cancel']);
   });
 
@@ -133,7 +130,6 @@ void main() {
         .setMockMethodCallHandler(
           targetPickerChannel,
           (_) async => {
-            'includesUnnamedClient': false,
             'selector': {'version': 2, 'path': []},
           },
         );
@@ -142,7 +138,10 @@ void main() {
           .setMockMethodCallHandler(targetPickerChannel, null),
     );
     await expectLater(
-      TargetPicker().pick(onCandidate: (_, _) {}),
+      TargetPicker().pick(
+        application: sampleApplication,
+        onCandidate: (_, _) {},
+      ),
       throwsFormatException,
     );
   });
@@ -169,7 +168,8 @@ void main() {
             body: TextButton(
               onPressed: () => editSpan(
                 context,
-                const LessonLink('Rechteck', target: DrawTargets.rectangleTool),
+                const LessonLink('Speichern', target: saveTarget),
+                application: sampleApplication,
               ),
               child: const Text('Bearbeiten'),
             ),
@@ -186,9 +186,6 @@ void main() {
     final field = tester.widget<TextField>(
       find.widgetWithText(TextField, 'Zielpfad (JSON, optional)'),
     );
-    expect(
-      jsonDecode(field.controller?.text ?? ''),
-      DrawTargets.rectangleTool.toJson(),
-    );
+    expect(jsonDecode(field.controller?.text ?? ''), saveTarget.toJson());
   });
 }

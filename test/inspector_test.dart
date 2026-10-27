@@ -26,7 +26,7 @@ Map<String, dynamic> node(
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   final rawNodes = [
-    node('root', '', 'Draw', 0),
+    node('root', '', 'Application', 0),
     node('toolbar', 'root', 'Zeichnung', 1),
     node('rectangle-1', 'toolbar', 'Rechteck', 2),
     node('rectangle-2', 'root', 'Rechteck', 1),
@@ -134,8 +134,8 @@ void main() {
       final selection = node('selected', '', 'Rechteck', 0);
       final state = <String, dynamic>{
         'selection': selection,
-        'drawLeft': 100.0,
-        'drawTop': 50.0,
+        'targetLeft': 100.0,
+        'targetTop': 50.0,
       };
       await tester.pumpWidget(
         MaterialApp(home: InspectorOverlay(state: state)),

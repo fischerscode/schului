@@ -4,7 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:schului/main.dart';
 import 'package:schului/lessons/lesson_content.dart';
-import 'package:schului/lessons/draw_targets.dart';
+
+import 'sample_lesson.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -28,7 +29,9 @@ void main() {
           }
           return null;
         });
-    await tester.pumpWidget(const SchoolApp());
+    await tester.pumpWidget(
+      SchoolApp(role: 'lesson', document: sampleDocument()),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Nächster Abschnitt'));
     await tester.pumpAndSettle();
@@ -37,7 +40,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Pfade entdecken (Inspector)'));
     await tester.pumpAndSettle();
-    expect(find.text('LibreOffice Draw · Accessibility-Baum'), findsOneWidget);
+    expect(find.text('Beispiel-Editor · Accessibility-Baum'), findsOneWidget);
     expect(find.text('Pfad anzeigen / laden'), findsOneWidget);
     expect(inspector, isTrue);
     await tester.tap(find.text('Zurück zum Unterricht'));
@@ -67,20 +70,22 @@ void main() {
           }
           return null;
         });
-    await tester.pumpWidget(const SchoolApp());
+    await tester.pumpWidget(
+      SchoolApp(role: 'lesson', document: sampleDocument()),
+    );
     await tester.pump();
     final viewport = find.descendant(
       of: find.byType(LessonContent),
       matching: find.byType(SingleChildScrollView),
     );
-    final first = tester.getTopLeft(find.text('Hallo, Draw!')).dy;
-    final second = tester.getTopLeft(find.text('Dein erstes Objekt')).dy;
+    final first = tester.getTopLeft(find.text('Willkommen')).dy;
+    final second = tester.getTopLeft(find.text('Dein erster Text')).dy;
     expect(
       second - first,
       greaterThanOrEqualTo(tester.getSize(viewport).height),
     );
     expect(
-      tester.getCenter(find.textContaining('Mit LibreOffice Draw')).dy,
+      tester.getCenter(find.textContaining('Lerne den Editor')).dy,
       greaterThan(first + 100),
     );
     await tester.tap(find.byTooltip('Nächster Abschnitt'));
@@ -88,11 +93,11 @@ void main() {
     expect(find.text('Abschnitt 2 von 7'), findsOneWidget);
     final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await mouse.addPointer(location: Offset.zero);
-    await mouse.moveTo(tester.getCenter(find.text('Arbeitsbereich').first));
+    await mouse.moveTo(tester.getCenter(find.text('Speichern').first));
     await tester.pump();
     expect(
       calls.lastWhere((call) => call.method == 'hover').arguments,
-      DrawTargets.workingArea.toJson(),
+      saveTarget.toJson(),
     );
     await mouse.moveTo(Offset.zero);
     await tester.pump();
@@ -120,7 +125,11 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: LessonContent(onHover: (_) {}, onSection: (_) {}),
+          body: LessonContent(
+            lessons: sampleSteps,
+            onHover: (_) {},
+            onSection: (_) {},
+          ),
         ),
       ),
     );
@@ -151,7 +160,9 @@ void main() {
           }
           return null;
         });
-    await tester.pumpWidget(const SchoolApp());
+    await tester.pumpWidget(
+      SchoolApp(role: 'lesson', document: sampleDocument()),
+    );
     await tester.pump();
     expect(find.text('Zielsoftware verbinden …'), findsOneWidget);
     expect(find.text('Testfehler beim Start'), findsOneWidget);
