@@ -7,7 +7,7 @@ namespace live_path {
 // and unnamed-sibling rules as Resolve, then verify unique identity before use.
 template <typename Handle, typename Provider>
 std::optional<std::vector<Segment>> Capture(const std::vector<Handle> &chain,
-                                           Provider &provider) {
+                                           Provider &provider, bool draw_compatibility = true) {
   if (chain.empty() || chain.size() > 64) return std::nullopt;
   const auto root = provider.Read(chain.front());
   if (!root.valid) return std::nullopt;
@@ -16,9 +16,9 @@ std::optional<std::vector<Segment>> Capture(const std::vector<Handle> &chain,
     if (provider.Cancelled()) return std::nullopt;
     const auto value = provider.Read(chain[i]);
     if (!value.valid) return std::nullopt;
-    if (i > 0 && i + 1 < chain.size() && TitleWrapper(value, root)) continue;
+    if (draw_compatibility && i > 0 && i + 1 < chain.size() && TitleWrapper(value, root)) continue;
     Segment segment{value.type, value.name, std::nullopt};
-    if (i == 0 || (Normalize(value.type) == L"dokument" && i + 1 < chain.size()))
+    if (i == 0 || (draw_compatibility && Normalize(value.type) == L"dokument" && i + 1 < chain.size()))
       segment.name.reset();
     if (i > 0 && Normalize(value.name).empty()) {
       const auto siblings = provider.Children(chain[i - 1]);
@@ -39,7 +39,7 @@ std::optional<std::vector<Segment>> Capture(const std::vector<Handle> &chain,
     }
     path.push_back(std::move(segment));
   }
-  const auto resolved = Resolve(chain.front(), path, provider);
+  const auto resolved = Resolve(chain.front(), path, provider, draw_compatibility);
   if (!resolved.node || resolved.failed || resolved.ambiguous ||
       provider.Cancelled() || !provider.Equal(*resolved.node, chain.back()))
     return std::nullopt;

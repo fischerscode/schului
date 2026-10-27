@@ -2,25 +2,34 @@ import 'dart:convert';
 
 import '../lessons/draw_lesson.dart' as example;
 import '../lessons/lesson_model.dart';
-import '../lessons/draw_target.dart';
+import '../lessons/application_target.dart';
+import 'target_application.dart';
 
 /// Versioned, portable lesson content. Runtime IDs and coordinates are excluded.
 class LessonDocument {
-  LessonDocument({required this.title, required List<LessonStep> steps})
-    : steps = List.unmodifiable(steps) {
+  LessonDocument({
+    required this.title,
+    required List<LessonStep> steps,
+    this.application = const UnconfiguredApplication(),
+  }) : steps = List.unmodifiable(steps) {
     if (title.trim().isEmpty || steps.isEmpty || steps.length > 200) {
       throw const FormatException('Titel und 1 bis 200 Schritte erforderlich.');
     }
   }
 
   final String title;
+  final TargetApplication application;
   final List<LessonStep> steps;
 
-  factory LessonDocument.example() =>
-      LessonDocument(title: 'Draw entdecken', steps: example.steps);
+  factory LessonDocument.example() => LessonDocument(
+    title: 'Draw entdecken',
+    steps: example.steps,
+    application: const DrawApplication(),
+  );
 
   factory LessonDocument.empty() => LessonDocument(
     title: 'Neue Lernumgebung',
+    application: const UnconfiguredApplication(),
     steps: [
       const LessonStep('Erster Schritt', [
         LessonParagraph([LessonText('Dein Arbeitsauftrag.')]),
@@ -30,8 +39,8 @@ class LessonDocument {
 
   String encode() => const JsonEncoder.withIndent('  ').convert({
     'format': 'schului.lesson',
-    'version': 1,
-    'application': 'libreoffice.draw',
+    'version': 2,
+    'application': application.toJson(),
     'title': title,
     'steps': [
       for (final step in steps)
@@ -77,12 +86,18 @@ class LessonDocument {
     final Object? raw = jsonDecode(source);
     if (raw is! Map<String, Object?> ||
         raw['format'] != 'schului.lesson' ||
-        raw['version'] != 1 ||
-        raw['application'] != 'libreoffice.draw') {
+        (raw['version'] != 1 && raw['version'] != 2)) {
       throw const FormatException(
-        'Keine unterstützte schului-Lerndatei (Version 1, Draw).',
+        'Keine unterstützte schului-Lerndatei (Version 1 oder 2).',
       );
     }
+    final application = raw['version'] == 1
+        ? (raw['application'] == 'libreoffice.draw'
+              ? const DrawApplication()
+              : throw const FormatException(
+                  'Unbekannte Zielsoftware in Version 1.',
+                ))
+        : TargetApplication.fromJson(raw['application']);
     final result = <LessonStep>[];
     for (final entry in _list(raw['steps'])) {
       final step = _map(entry);
@@ -112,7 +127,11 @@ class LessonDocument {
         ),
       );
     }
-    return LessonDocument(title: _text(raw['title']), steps: result);
+    return LessonDocument(
+      title: _text(raw['title']),
+      steps: result,
+      application: application,
+    );
   }
 
   static LessonParagraph _paragraph(Object? raw) {
@@ -140,7 +159,9 @@ class LessonDocument {
             LessonLink(
               text,
               help: help as String?,
-              target: target == null ? null : DrawTarget.fromJson(_map(target)),
+              target: target == null
+                  ? null
+                  : ApplicationTarget.fromJson(_map(target)),
             ),
           );
         default:

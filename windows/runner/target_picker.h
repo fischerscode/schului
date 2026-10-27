@@ -8,6 +8,7 @@
 #include <mutex>
 #include <optional>
 #include <thread>
+#include "application_config.h"
 
 class TargetPicker {
  public:
@@ -27,7 +28,8 @@ class TargetPicker {
     bool confirmed = false;
     uint64_t generation = 0;
   };
-  void Start(std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+  void Start(const flutter::EncodableValue *application, std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+  target_app::Config application_;
   void ReadCursor();
   void Apply();
   void ShowBounds(const RECT &bounds);

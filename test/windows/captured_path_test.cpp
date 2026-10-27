@@ -53,5 +53,12 @@ int main() {
   Require(path && path->size() == 5 && (*path)[1].index == 0,
       "Unnamed client must remain explicitly indexed");
   Require(!live_path::Capture(std::vector<int>{}, provider), "Empty chain must be rejected");
+  provider.nodes[1].metadata.name = provider.nodes[0].metadata.name;
+  path = live_path::Capture(chain, provider, false);
+  Require(path && path->size() == 5, "Generic capture must preserve named title-like wrappers");
+  Require((*path)[3].name.has_value(), "Generic document ancestor names must be preserved");
+  Require(live_path::Resolve(0, *path, provider, false).node == 7, "Generic capture must round-trip without Draw adaptations");
+  provider.nodes[6].metadata.name = L"Different document";
+  Require(!live_path::Resolve(0, *path, provider, false).node, "Generic matching must not erase document names");
   std::cout << "Captured path tests passed.\n";
 }

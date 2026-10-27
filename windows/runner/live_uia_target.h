@@ -26,12 +26,17 @@ inline const EncodableValue *Entry(const EncodableMap &map, const char *key) {
   return found == map.end() ? nullptr : &found->second;
 }
 inline bool Parse(const EncodableValue &target, std::vector<live_path::Segment> *path,
-                  bool *includes_client) {
+                  bool *includes_client, bool *draw_compatibility = nullptr) {
   const auto *map = std::get_if<EncodableMap>(&target);
   if (!map) return false;
   const auto *selector_value = Entry(*map, "selector");
   const auto *selector = selector_value ? std::get_if<EncodableMap>(selector_value) : nullptr;
   if (!selector) return false;
+  const auto *mode_value = Entry(*selector, "mode");
+  const auto *mode = mode_value ? std::get_if<std::string>(mode_value) : nullptr;
+  if (mode_value && (!mode || *mode != "exact")) return false;
+  const bool compatibility = !mode_value;
+  if (draw_compatibility) *draw_compatibility = compatibility;
   const auto *path_value = Entry(*selector, "path");
   const auto *entries = path_value ? std::get_if<EncodableList>(path_value) : nullptr;
   if (!entries || entries->empty() || entries->size() > 64) return false;
@@ -58,7 +63,7 @@ inline bool Parse(const EncodableValue &target, std::vector<live_path::Segment> 
           !segment.name || !live_path::Normalize(*segment.name).empty()) return false;
       segment.index = static_cast<int>(index);
     }
-    if (live_path::Normalize(segment.type) == L"dokument" && path->size() + 1 < entries->size())
+    if (compatibility && live_path::Normalize(segment.type) == L"dokument" && path->size() + 1 < entries->size())
       segment.name.reset();
     path->push_back(std::move(segment));
   }
@@ -113,12 +118,17 @@ inline std::optional<Handle> Resolve(IUIAutomation *automation, HWND draw,
     const EncodableValue &target, const std::function<bool()> &cancelled) {
   std::vector<live_path::Segment> path;
   bool includes_client = false;
-  if (!Parse(target, &path, &includes_client) || cancelled() || !IsWindow(draw)) return std::nullopt;
+  bool compatibility = true;
+  if (!Parse(target, &path, &includes_client, &compatibility) || cancelled() || !IsWindow(draw)) return std::nullopt;
   Handle root;
   ComPtr<IUIAutomationTreeWalker> walker;
   if (FAILED(automation->ElementFromHandle(draw, &root)) ||
       FAILED(automation->get_RawViewWalker(&walker))) return std::nullopt;
   Provider provider(walker.Get(), cancelled);
+  if (!compatibility) {
+    auto result = live_path::Resolve(root, path, provider, false);
+    return result.failed || result.ambiguous || provider.Cancelled() ? std::nullopt : result.node;
+  }
   const auto root_metadata = provider.Read(root);
   const auto children = provider.Children(root);
   if (!root_metadata.valid || !children) return std::nullopt;

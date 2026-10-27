@@ -36,6 +36,23 @@ bool FlutterWindow::OnCreate() {
       result->Success(Session().State(role_ != "overlay" && role_ != "learningApp"));
       return;
     }
+    if (method == "configureApplication") {
+      if (!call.arguments() || !Session().ConfigureApplication(*call.arguments())) {
+        result->Error("application", "Ungültige Zielsoftware oder Sitzung bereits gestartet."); return;
+      }
+      std::string error;
+      Session().Start(&error); // Startup errors remain visible in session state.
+      result->Success(); return;
+    }
+    if (method == "applicationWindows") { result->Success(Session().ApplicationWindows()); return; }
+    if (method == "selectApplicationWindow") {
+      const auto *large = call.arguments() ? std::get_if<int64_t>(call.arguments()) : nullptr;
+      const auto *small_handle = call.arguments() ? std::get_if<int32_t>(call.arguments()) : nullptr;
+      if ((!large && !small_handle) || !Session().SelectApplicationWindow(large ? *large : *small_handle)) {
+        result->Error("window", "Fenster ist nicht mehr verfügbar oder gehört zu einer anderen Software."); return;
+      }
+      result->Success(); return;
+    }
     if (method == "start") {
       std::string error;
       if (!Session().Start(&error)) {
@@ -131,8 +148,6 @@ bool FlutterWindow::OnCreate() {
     flutter_controller_->engine()->SetNextFrameCallback([this]() {
       Show();
       SetForegroundWindow(GetHandle());
-      std::string error;
-      Session().Start(&error);
     });
   }
   if (role_ == "teacher") {

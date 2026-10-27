@@ -11,6 +11,7 @@
 #include <windows.h>
 #include <condition_variable>
 #include <cstdint>
+#include "application_config.h"
 
 struct AccessibleTarget {
   std::string name;
@@ -29,6 +30,9 @@ public:
   void Register(const std::string &role, HWND hwnd);
   void Tick();
   bool Start(std::string *error);
+  bool ConfigureApplication(const flutter::EncodableValue &value);
+  flutter::EncodableValue ApplicationWindows();
+  bool SelectApplicationWindow(int64_t handle);
   void SetStep(int value);
   void SetHover(const flutter::EncodableValue &target);
   void SetHint(bool value);
@@ -45,6 +49,10 @@ private:
   void Inspect();
   void InspectHoverBounds();
   HWND FindDraw();
+  bool StartApplication(std::string *error);
+  target_app::Config application_;
+  std::atomic<bool> draw_adapter_{true};
+  HWND preferred_window_ = nullptr;
   HWND lesson_ = nullptr, overlay_ = nullptr, hint_ = nullptr, learning_app_ = nullptr;
   bool learning_app_visible_ = false;
   std::string learning_app_url_;

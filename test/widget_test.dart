@@ -37,7 +37,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Pfade entdecken (Inspector)'));
     await tester.pumpAndSettle();
-    expect(find.text('Draw · Accessibility-Baum'), findsOneWidget);
+    expect(find.text('LibreOffice Draw · Accessibility-Baum'), findsOneWidget);
     expect(find.text('Pfad anzeigen / laden'), findsOneWidget);
     expect(inspector, isTrue);
     await tester.tap(find.text('Zurück zum Unterricht'));
@@ -153,7 +153,7 @@ void main() {
         });
     await tester.pumpWidget(const SchoolApp());
     await tester.pump();
-    expect(find.text('Draw wird gestartet …'), findsOneWidget);
+    expect(find.text('Zielsoftware verbinden …'), findsOneWidget);
     expect(find.text('Testfehler beim Start'), findsOneWidget);
     await tester.tap(find.byTooltip('Lernumgebung'));
     await tester.pumpAndSettle();

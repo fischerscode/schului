@@ -47,10 +47,12 @@ void main() {
       );
       await tester.tap(find.text('Bearbeiten'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Ziel in Draw auswählen'));
+      await tester.tap(find.text('Ziel in Anwendung auswählen'));
       await tester.pumpAndSettle();
       expect(
-        find.text('Über ein Ziel in Draw zeigen. F8 übernimmt, Esc bricht ab.'),
+        find.text(
+          'Über ein Ziel in der Anwendung zeigen. F8 übernimmt, Esc bricht ab.',
+        ),
         findsOneWidget,
       );
       expect(
@@ -112,7 +114,7 @@ void main() {
     );
     await tester.tap(find.text('Bearbeiten'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Ziel in Draw auswählen'));
+    await tester.tap(find.text('Ziel in Anwendung auswählen'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Zielauswahl abbrechen'));
     await tester.pumpAndSettle();
@@ -177,10 +179,10 @@ void main() {
     );
     await tester.tap(find.text('Bearbeiten'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Ziel in Draw auswählen'));
+    await tester.tap(find.text('Ziel in Anwendung auswählen'));
     await tester.pumpAndSettle();
     expect(find.text('Mausposition nicht verfügbar.'), findsOneWidget);
-    expect(find.text('Ziel in Draw auswählen'), findsOneWidget);
+    expect(find.text('Ziel in Anwendung auswählen'), findsOneWidget);
     final field = tester.widget<TextField>(
       find.widgetWithText(TextField, 'Zielpfad (JSON, optional)'),
     );

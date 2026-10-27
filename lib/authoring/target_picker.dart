@@ -1,14 +1,16 @@
 import 'package:flutter/services.dart';
 
-import '../lessons/draw_target.dart';
+import '../lessons/application_target.dart';
+import 'target_application.dart';
 
 const targetPickerChannel = MethodChannel('schului/target-picker');
 
 /// One native picker per editor. Candidate messages contain presentation only;
 /// the confirmed result is validated before it becomes an authored target.
 class TargetPicker {
-  Future<DrawTarget?> pick({
+  Future<ApplicationTarget?> pick({
     required void Function(String label, String error) onCandidate,
+    TargetApplication application = const DrawApplication(),
   }) async {
     targetPickerChannel.setMethodCallHandler((call) async {
       if (call.method != 'candidate') return;
@@ -20,7 +22,10 @@ class TargetPicker {
       }
     });
     try {
-      final raw = await targetPickerChannel.invokeMethod<Object?>('begin');
+      final raw = await targetPickerChannel.invokeMethod<Object?>(
+        'begin',
+        application.toJson(),
+      );
       if (raw == null) return null;
       if (raw is! Map<Object?, Object?> ||
           raw['includesUnnamedClient'] is! bool) {
@@ -28,7 +33,7 @@ class TargetPicker {
           'Windows hat einen ungültigen Zielpfad geliefert.',
         );
       }
-      return DrawTarget.fromJson(raw);
+      return ApplicationTarget.fromJson(raw);
     } finally {
       targetPickerChannel.setMethodCallHandler(null);
     }

@@ -51,3 +51,10 @@ set_target_properties(captured_path_test PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests")
 apply_standard_settings(captured_path_test)
 target_compile_options(captured_path_test PRIVATE /utf-8)
+
+add_executable(application_config_test EXCLUDE_FROM_ALL "../../test/windows/application_config_test.cpp")
+set_target_properties(application_config_test PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests")
+apply_standard_settings(application_config_test)
+target_compile_options(application_config_test PRIVATE /utf-8)
+target_include_directories(application_config_test PRIVATE "${FLUTTER_MANAGED_DIR}/ephemeral/cpp_client_wrapper/include")
+target_link_libraries(application_config_test PRIVATE shell32.lib)

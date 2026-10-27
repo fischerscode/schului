@@ -292,7 +292,52 @@ void DesktopSession::Register(const std::string &role, HWND hwnd) {
   Tick();
 }
 
+bool DesktopSession::ConfigureApplication(const EncodableValue &value) {
+  auto config = target_app::Parse(value);
+  if (!config || captured_ || launched_pid_) return false;
+  application_ = *config;
+  draw_adapter_ = config->draw;
+  return true;
+}
+EncodableValue DesktopSession::ApplicationWindows() { return EncodableValue(target_app::List(&application_)); }
+bool DesktopSession::SelectApplicationWindow(int64_t handle) {
+  const auto window = reinterpret_cast<HWND>(static_cast<intptr_t>(handle));
+  auto candidate = target_app::Read(window);
+  if (!candidate || !target_app::Matches(*candidate, application_) || captured_) return false;
+  preferred_window_ = window;
+  draw_ = nullptr;
+  Tick();
+  return true;
+}
+bool DesktopSession::StartApplication(std::string *error) {
+  startup_error_.clear();
+  if (IsWindow(draw_.load()) || FindDraw()) return true;
+  if (target_app::Windows(&application_).size() > 1) { *error = startup_error_; return false; }
+  startup_error_.clear();
+  FILETIME now{}; GetSystemTimeAsFileTime(&now);
+  if (launched_pid_ && FileTimeValue(now) - launch_time_ < 300000000ULL) return true;
+  std::error_code filesystem_error;
+  if (!std::filesystem::is_regular_file(application_.executable, filesystem_error)) {
+    startup_error_ = *error = "Zielsoftware nicht gefunden. Programmpfad in der Unterrichtseinheit anpassen oder Software zuerst öffnen.";
+    return false;
+  }
+  auto command = target_app::Quote(application_.executable);
+  for (const auto &argument : application_.arguments) command += L" " + target_app::Quote(argument);
+  if (command.size() >= 32767) { startup_error_ = *error = "Startargumente sind zu lang."; return false; }
+  STARTUPINFOW startup{}; startup.cb = sizeof(startup);
+  PROCESS_INFORMATION process{};
+  if (!CreateProcessW(application_.executable.c_str(), command.data(), nullptr, nullptr, FALSE, 0, nullptr,
+      std::filesystem::path(application_.executable).parent_path().c_str(), &startup, &process)) {
+    startup_error_ = *error = "Zielsoftware konnte nicht gestartet werden (Windows-Fehler " + std::to_string(GetLastError()) + ").";
+    return false;
+  }
+  launched_pid_ = process.dwProcessId; launch_time_ = FileTimeValue(now);
+  launched_executable_ = application_.executable;
+  CloseHandle(process.hThread); CloseHandle(process.hProcess);
+  return true;
+}
 bool DesktopSession::Start(std::string *error) {
+  if (!application_.draw) return StartApplication(error);
   startup_error_.clear();
   if (IsWindow(draw_.load()))
     return true;
@@ -405,6 +450,17 @@ bool DesktopSession::Start(std::string *error) {
 }
 
 HWND DesktopSession::FindDraw() {
+  if (!application_.draw) {
+    if (auto preferred = target_app::Read(preferred_window_); preferred && target_app::Matches(*preferred, application_)) { startup_error_.clear(); return preferred_window_; }
+    auto windows = target_app::Windows(&application_);
+    if (windows.size() == 1) { startup_error_.clear(); connection_method_ = "configured-application"; return windows.front().handle; }
+    if (windows.size() > 1) startup_error_ = "Mehrere passende Fenster. Bitte Fenster auswählen.";
+    else if (launched_pid_) {
+      FILETIME now{}; GetSystemTimeAsFileTime(&now);
+      if (FileTimeValue(now) - launch_time_ >= 300000000ULL) startup_error_ = "Kein passendes Fenster gefunden. Software öffnen und Fensterauswahl bzw. Programmeinstellungen prüfen.";
+    }
+    return nullptr;
+  }
   if (!launched_pid_)
     return nullptr;
   // Prefer the actual office PID, independent of launcher/updater ancestry.
@@ -493,6 +549,10 @@ void DesktopSession::Tick() {
   const RECT left = bounds.lesson;
   draw_rect_ = bounds.draw;
   HWND draw = draw_.load();
+  if (draw && !application_.draw) {
+    const auto candidate = target_app::Read(draw);
+    if (!candidate || !target_app::Matches(*candidate, application_)) { draw_ = nullptr; draw = nullptr; }
+  }
   if (session_layout::ApplyVisibility(
           draw, lesson_, overlay_, hint_, draw_connected_once_,
           lesson_hidden_for_draw_) == session_layout::Visibility::closed) {
@@ -686,8 +746,10 @@ void DesktopSession::Restore() {
     ShowWindow(overlay_, SW_HIDE);
   if (hint_)
     ShowWindow(hint_, SW_HIDE);
-  if (captured_ && IsWindow(draw_.load()))
-    SetWindowPlacement(draw_.load(), &original_);
+  if (captured_ && IsWindow(draw_.load())) {
+    const auto candidate = application_.draw ? std::optional<target_app::Window>{} : target_app::Read(draw_.load());
+    if (application_.draw || (candidate && target_app::Matches(*candidate, application_))) SetWindowPlacement(draw_.load(), &original_);
+  }
 }
 EncodableValue DesktopSession::State(bool include_nodes) {
   std::lock_guard<std::mutex> lock(mutex_);
@@ -822,9 +884,9 @@ void DesktopSession::Inspect() {
                 continue;
               CONTROLTYPEID type = 0;
               element->get_CurrentControlType(&type);
-              if ((label == "Seitenleiste" && type == UIA_PaneControlTypeId) ||
+              if (draw_adapter_ && ((label == "Seitenleiste" && type == UIA_PaneControlTypeId) ||
                   (label == "Seitenleiste schließen" &&
-                   type == UIA_ButtonControlTypeId))
+                   type == UIA_ButtonControlTypeId)))
                 sidebar = true;
               targets.push_back({label, rect});
             }

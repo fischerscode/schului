@@ -5,26 +5,31 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../lessons/lesson_model.dart';
-import '../lessons/draw_target.dart';
+import '../lessons/application_target.dart';
 import '../lessons/draw_targets.dart';
 import '../src/node_selector.dart';
 import 'target_picker.dart';
+import 'target_application.dart';
 
-const targetPresets = <String, DrawTarget>{
+const targetPresets = <String, ApplicationTarget>{
   'Rechteck-Werkzeug': DrawTargets.rectangleTool,
   'Ellipse-Werkzeug': DrawTargets.ellipseTool,
   'Rechteck-Objekt': DrawTargets.rectangleObject,
 };
 
-Future<LessonSpan?> editSpan(BuildContext context, LessonSpan span) =>
-    showDialog<LessonSpan>(
-      context: context,
-      builder: (_) => _SpanDialog(span: span),
-    );
+Future<LessonSpan?> editSpan(
+  BuildContext context,
+  LessonSpan span, {
+  TargetApplication application = const DrawApplication(),
+}) => showDialog<LessonSpan>(
+  context: context,
+  builder: (_) => _SpanDialog(span: span, application: application),
+);
 
 class _SpanDialog extends StatefulWidget {
-  const _SpanDialog({required this.span});
+  const _SpanDialog({required this.span, required this.application});
   final LessonSpan span;
+  final TargetApplication application;
   @override
   State<_SpanDialog> createState() => _SpanDialogState();
 }
@@ -64,6 +69,7 @@ class _SpanDialogState extends State<_SpanDialog> {
     });
     try {
       final target = await picker.pick(
+        application: widget.application,
         onCandidate: (label, message) {
           if (mounted) {
             setState(() {
@@ -100,12 +106,12 @@ class _SpanDialogState extends State<_SpanDialog> {
 
   void save() {
     try {
-      DrawTarget? target;
+      ApplicationTarget? target;
       if (linked && path.text.trim().isNotEmpty) {
         final Object? raw = jsonDecode(path.text);
         target = raw is Map<String, Object?> && raw.containsKey('selector')
-            ? DrawTarget.fromJson(raw)
-            : DrawTarget(NodeSelector.fromJson(raw));
+            ? ApplicationTarget.fromJson(raw)
+            : ApplicationTarget(NodeSelector.fromJson(raw));
       }
       if (text.text.trim().isEmpty) {
         throw const FormatException('Text eingeben.');
@@ -162,13 +168,15 @@ class _SpanDialogState extends State<_SpanDialog> {
               if (linked) ...[
                 if (!picking)
                   OutlinedButton.icon(
-                    onPressed: pickTarget,
+                    onPressed: widget.application is UnconfiguredApplication
+                        ? null
+                        : pickTarget,
                     icon: const Icon(Icons.my_location_outlined),
-                    label: const Text('Ziel in Draw auswählen'),
+                    label: const Text('Ziel in Anwendung auswählen'),
                   )
                 else ...[
                   const Text(
-                    'Über ein Ziel in Draw zeigen. F8 übernimmt, Esc bricht ab.',
+                    'Über ein Ziel in der Anwendung zeigen. F8 übernimmt, Esc bricht ab.',
                   ),
                   const SizedBox(height: 8),
                   Semantics(
@@ -194,22 +202,23 @@ class _SpanDialogState extends State<_SpanDialog> {
                   decoration: const InputDecoration(labelText: 'Hilfetext'),
                 ),
                 const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  decoration: const InputDecoration(
-                    labelText: 'Draw-Zielvorlage',
+                if (widget.application is DrawApplication)
+                  DropdownButtonFormField<String>(
+                    decoration: const InputDecoration(
+                      labelText: 'Draw-Zielvorlage',
+                    ),
+                    items: [
+                      for (final name in targetPresets.keys)
+                        DropdownMenuItem(value: name, child: Text(name)),
+                    ],
+                    onChanged: (value) {
+                      final target = targetPresets[value];
+                      if (target != null) {
+                        path.text = const JsonEncoder.withIndent('  ')
+                            .convert(target.toJson());
+                      }
+                    },
                   ),
-                  items: [
-                    for (final name in targetPresets.keys)
-                      DropdownMenuItem(value: name, child: Text(name)),
-                  ],
-                  onChanged: (value) {
-                    final target = targetPresets[value];
-                    if (target != null) {
-                      path.text = const JsonEncoder.withIndent('  ')
-                          .convert(target.toJson());
-                    }
-                  },
-                ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: path,

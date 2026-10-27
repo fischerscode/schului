@@ -11,15 +11,19 @@ import '../src/windows_bridge.dart';
 import 'lesson_document.dart';
 import 'lesson_files.dart';
 import 'span_dialog.dart';
+import 'target_application.dart';
+import 'application_settings.dart';
 
 class TeacherView extends StatefulWidget {
-  const TeacherView({super.key});
+  const TeacherView({super.key, this.initialDocument});
+  final LessonDocument? initialDocument;
   @override
   State<TeacherView> createState() => _TeacherViewState();
 }
 
 class _TeacherViewState extends State<TeacherView> {
-  LessonDocument document = LessonDocument.example();
+  late LessonDocument document =
+      widget.initialDocument ?? LessonDocument.empty();
   int selected = 0;
   int revision = 0;
   String? path, error;
@@ -59,6 +63,7 @@ class _TeacherViewState extends State<TeacherView> {
       document = LessonDocument(
         title: name ?? document.title,
         steps: steps ?? document.steps,
+        application: document.application,
       );
       dirty = true;
       revision++;
@@ -121,6 +126,74 @@ class _TeacherViewState extends State<TeacherView> {
 
   Future<void> create() async {
     if (await canDiscard() && mounted) await replace(LessonDocument.empty());
+  }
+
+  Future<void> configureApplication() async {
+    final next = await editApplication(context, document.application);
+    if (next == null || !mounted) return;
+    final previous = document.application;
+    final sameSoftware =
+        previous is DrawApplication && next is DrawApplication ||
+        previous is WindowsApplication &&
+            next is WindowsApplication &&
+            previous.executable.toLowerCase() == next.executable.toLowerCase();
+    final hasTargets = document.steps.any(
+      (step) => step.links.any((link) => link.target != null),
+    );
+    if (!sameSoftware && hasTargets) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Zielsoftware wechseln?'),
+          content: const Text(
+            'Vorhandene Zielverknüpfungen werden entfernt. Texte und Tipps bleiben erhalten.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Abbrechen'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Wechseln'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !mounted) return;
+    }
+    LessonParagraph clean(LessonParagraph p) => LessonParagraph([
+      for (final span in p.spans)
+        switch (span) {
+          LessonText() => span,
+          LessonLink() => LessonLink(span.text, help: span.help),
+        },
+    ]);
+    final steps = sameSoftware
+        ? document.steps
+        : [
+            for (final step in document.steps)
+              LessonStep(step.title, [
+                for (final block in step.content)
+                  switch (block) {
+                    LessonParagraph() => clean(block),
+                    LessonBulletList() => LessonBulletList([
+                      for (final p in block.items) clean(p),
+                    ]),
+                    LessonActivity() => block,
+                  },
+              ], step.hint),
+          ];
+    ScaffoldMessenger.of(context).clearSnackBars();
+    setState(() {
+      document = LessonDocument(
+        title: document.title,
+        steps: steps,
+        application: next,
+      );
+      dirty = true;
+      revision++;
+    });
   }
 
   Future<void> open() async {
@@ -193,6 +266,10 @@ class _TeacherViewState extends State<TeacherView> {
 
   Future<void> run({bool inspector = false}) async {
     if (!validTitles() || running) return;
+    if (document.application is UnconfiguredApplication) {
+      await configureApplication();
+      if (!mounted || document.application is UnconfiguredApplication) return;
+    }
     setState(() {
       running = true;
       error = null;
@@ -276,7 +353,11 @@ class _TeacherViewState extends State<TeacherView> {
       LessonBulletList() => block.items[bullet ?? 0],
       LessonActivity() => throw StateError('Activity has no spans'),
     };
-    final result = await editSpan(context, paragraph.spans[spanIndex]);
+    final result = await editSpan(
+      context,
+      paragraph.spans[spanIndex],
+      application: document.application,
+    );
     if (result == null || !mounted) return;
     final spans = [...paragraph.spans];
     spans[spanIndex] = result;
@@ -301,7 +382,11 @@ class _TeacherViewState extends State<TeacherView> {
     LessonParagraph paragraph, {
     int? bullet,
   }) async {
-    final result = await editSpan(context, const LessonText('Text'));
+    final result = await editSpan(
+      context,
+      const LessonText('Text'),
+      application: document.application,
+    );
     if (result != null && mounted) {
       setParagraph(
         blockIndex,
@@ -456,12 +541,33 @@ class _TeacherViewState extends State<TeacherView> {
                     selectedIcon: const Icon(Icons.edit_outlined),
                   ),
                   action(
+                    Icons.settings_outlined,
+                    'Zielsoftware',
+                    busy ? null : configureApplication,
+                  ),
+                  PopupMenuButton<String>(
+                    tooltip: 'Vorlagen',
+                    onSelected: (_) async {
+                      if (await canDiscard() && mounted) {
+                        await replace(LessonDocument.example());
+                      }
+                    },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(
+                        value: 'draw',
+                        child: Text('Draw-Beispiel'),
+                      ),
+                    ],
+                  ),
+                  action(
                     Icons.account_tree_outlined,
-                    'Ziele in Draw erkunden',
+                    'Ziele erkunden',
                     running || busy ? null : () => run(inspector: true),
                   ),
                   IconButton.filled(
-                    tooltip: running ? 'Lernumgebung läuft' : 'In Draw starten',
+                    tooltip: running
+                        ? 'Lernumgebung läuft'
+                        : 'Lernumgebung starten',
                     onPressed: running || busy ? null : run,
                     icon: const Icon(Icons.play_arrow_outlined),
                   ),
@@ -540,7 +646,7 @@ class _TeacherViewState extends State<TeacherView> {
                       dirty
                           ? 'Ungespeichert'
                           : path == null
-                          ? 'Draw-Vorlage'
+                          ? 'Neue Lernumgebung'
                           : 'Gespeichert',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
@@ -555,7 +661,15 @@ class _TeacherViewState extends State<TeacherView> {
                       ),
                     ),
                   const SizedBox(width: 8),
-                  const Text('LibreOffice Draw'),
+                  Flexible(
+                    child: TextButton(
+                      onPressed: configureApplication,
+                      child: Text(
+                        document.application.name,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),

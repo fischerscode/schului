@@ -12,6 +12,8 @@ import 'authoring/lesson_document.dart';
 import 'authoring/lesson_files.dart';
 import 'authoring/teacher_view.dart';
 import 'src/schulzeug_theme.dart';
+import 'authoring/target_application.dart';
+import 'authoring/application_settings.dart';
 export 'src/windows_bridge.dart' show bridge;
 
 Future<void> main(List<String> args) async {
@@ -21,6 +23,19 @@ Future<void> main(List<String> args) async {
     final document = fileIndex < 0
         ? null
         : await readLessonFile(args[fileIndex + 1]);
+    final role = args.isEmpty ? 'teacher' : args.first;
+    if (role == 'lesson' || role == 'inspector') {
+      final application = document?.application ?? const DrawApplication();
+      if (application is UnconfiguredApplication) {
+        throw const FormatException(
+          'Zuerst im Editor eine Zielsoftware auswählen.',
+        );
+      }
+      await bridge.invokeMethod<void>(
+        'configureApplication',
+        application.toJson(),
+      );
+    }
     runApp(
       SchoolApp(
         role: args.isEmpty ? 'teacher' : args.first,
@@ -53,18 +68,32 @@ class SchoolApp extends StatelessWidget {
     debugShowCheckedModeBanner: false,
     theme: schulzeugTheme(),
     home: switch (role) {
-      'inspector' => const InspectorView(),
+      'inspector' => InspectorView(
+        applicationName: document?.application.name ?? 'Draw',
+        legacyDraw:
+            document == null || document?.application is DrawApplication,
+      ),
       'learningApp' => const LearningAppView(),
       'teacher' => const TeacherView(),
-      _ => SessionView(role: role, lessons: document?.steps ?? steps),
+      _ => SessionView(
+        role: role,
+        lessons: document?.steps ?? steps,
+        application: document?.application ?? const DrawApplication(),
+      ),
     },
   );
 }
 
 class SessionView extends StatefulWidget {
-  const SessionView({super.key, required this.role, this.lessons = steps});
+  const SessionView({
+    super.key,
+    required this.role,
+    this.lessons = steps,
+    this.application = const DrawApplication(),
+  });
   final String role;
   final List<LessonStep> lessons;
+  final TargetApplication application;
   @override
   State<SessionView> createState() => _SessionViewState();
 }
@@ -152,12 +181,27 @@ class _SessionViewState extends State<SessionView> {
     inspectorOpen = true;
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
-        builder: (_) => const InspectorView(showLessonReturn: true),
+        builder: (_) => InspectorView(
+          showLessonReturn: true,
+          applicationName: widget.application.name,
+          legacyDraw: widget.application is DrawApplication,
+        ),
       ),
     );
     inspectorOpen = false;
     await command('selectNode', '');
     await command('inspector', false);
+  }
+
+  Future<void> selectWindow() async {
+    try {
+      final id = await chooseSessionWindow(context);
+      if (id != null && mounted) await command('selectApplicationWindow', id);
+    } on PlatformException catch (e) {
+      if (mounted) setState(() => error = e.message ?? e.code);
+    } on MissingPluginException {
+      if (mounted) setState(() => error = 'Die Windows-Anbindung fehlt.');
+    }
   }
 
   @override
@@ -194,8 +238,8 @@ class _SessionViewState extends State<SessionView> {
                   Expanded(
                     child: Text(
                       connected
-                          ? 'Draw ist verbunden.'
-                          : 'Draw wird gestartet …',
+                          ? '${widget.application.name} ist verbunden.'
+                          : 'Zielsoftware verbinden …',
                       style: const TextStyle(
                         fontSize: 12,
                         color: Color(0xFF52627C),
@@ -208,7 +252,7 @@ class _SessionViewState extends State<SessionView> {
                       'discoverPaths' => openInspector(),
                       'about' => showAboutDialog(
                         context: context,
-                        applicationName: "schului - Draw",
+                        applicationName: 'schului',
                       ),
                       _ => command(action),
                     },
@@ -220,7 +264,7 @@ class _SessionViewState extends State<SessionView> {
                       ),
                       PopupMenuItem(
                         value: 'start',
-                        child: Text('Draw starten / erneut verbinden'),
+                        child: Text('Software starten / erneut verbinden'),
                       ),
                       PopupMenuItem(
                         value: 'connectionDiagnostics',
@@ -240,6 +284,12 @@ class _SessionViewState extends State<SessionView> {
                       ),
                     ],
                   ),
+                  if (!connected && widget.application is WindowsApplication)
+                    IconButton(
+                      tooltip: 'Fenster auswählen',
+                      onPressed: selectWindow,
+                      icon: const Icon(Icons.window_outlined),
+                    ),
                 ],
               ),
             ),

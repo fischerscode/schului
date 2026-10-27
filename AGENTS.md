@@ -1,8 +1,10 @@
 # schului
 
-Build a Windows authoring tool for teachers and an interactive learner runtime.
-Preserve schului-draw's side-by-side real application, semantic UIA paths,
-hover highlights, contextual help, and diagnostic inspector.
+Build a Windows authoring tool for teachers to create units for arbitrary Windows
+software, with an interactive learner runtime. Preserve schului-draw's
+side-by-side real application, semantic UIA paths, hover highlights, contextual
+help and inspector. Draw is an optional compatibility adapter and example, never
+an implicit requirement for a new unit.
 
 ## Shared specifications
 
@@ -14,4 +16,6 @@ Create coherent local Conventional Commits after checks. Never push automaticall
 
 Use FVM for all Flutter/Dart commands. User-facing text is German; identifiers
 and developer documentation are English. Keep learning content separate from
-the Windows adapter. Do not weaken exact-path matching for learner highlights.
+the Windows adapter. Use exact, full paths for general applications; keep Draw's
+historical path adaptations confined to its compatibility mode. Never select an
+arbitrary first window when multiple windows match the configured software.

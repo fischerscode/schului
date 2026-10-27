@@ -6,6 +6,9 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:schului/authoring/teacher_view.dart';
+import 'package:schului/authoring/lesson_document.dart';
+import 'package:schului/authoring/target_application.dart';
+import 'package:schului/authoring/target_picker.dart';
 import 'package:schului/src/schulzeug_theme.dart';
 
 void main() {
@@ -64,6 +67,15 @@ void main() {
   });
 
   testWidgets('render teacher workspace for visual inspection', (tester) async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          targetPickerChannel,
+          (_) async => <Object?>[],
+        );
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(targetPickerChannel, null),
+    );
     await tester.runAsync(() async {
       for (final (family, filename) in [
         ('Roboto', 'roboto-regular.ttf'),
@@ -86,7 +98,19 @@ void main() {
     await tester.pumpWidget(
       RepaintBoundary(
         key: boundary,
-        child: MaterialApp(theme: schulzeugTheme(), home: const TeacherView()),
+        child: MaterialApp(
+          theme: schulzeugTheme(),
+          home: TeacherView(
+            initialDocument: LessonDocument(
+              title: 'Text bearbeiten',
+              steps: LessonDocument.empty().steps,
+              application: WindowsApplication(
+                name: 'Editor',
+                executable: r'C:\Windows\notepad.exe',
+              ),
+            ),
+          ),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -101,16 +125,28 @@ void main() {
           .writeAsBytes(bytes.buffer.asUint8List());
       image.dispose();
     });
-    await tester.tap(find.textContaining('Mit LibreOffice Draw kannst du'));
+    await tester.tap(find.text('Dein Arbeitsauftrag.'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Interaktiver Begriff'));
     await tester.pumpAndSettle();
-    expect(find.text('Ziel in Draw auswählen'), findsOneWidget);
+    expect(find.text('Ziel in Anwendung auswählen'), findsOneWidget);
     await tester.runAsync(() async {
       final image = await render.toImage();
       final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
       if (bytes == null) fail('Missing dialog PNG');
       await File('build/visual-review/target-picker.png')
+          .writeAsBytes(bytes.buffer.asUint8List());
+      image.dispose();
+    });
+    await tester.tap(find.text('Abbrechen'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Zielsoftware'));
+    await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      final image = await render.toImage();
+      final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (bytes == null) fail('Missing settings PNG');
+      await File('build/visual-review/application-settings.png')
           .writeAsBytes(bytes.buffer.asUint8List());
       image.dispose();
     });

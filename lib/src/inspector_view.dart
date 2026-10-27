@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'windows_bridge.dart';
 import 'accessibility_node.dart';
 import 'node_selector.dart';
+import '../authoring/application_settings.dart';
 export 'accessibility_node.dart';
 
 List<AccessibilityNode> visibleTreeNodes(
@@ -46,8 +47,15 @@ List<AccessibilityNode> visibleTreeNodes(
 }
 
 class InspectorView extends StatefulWidget {
-  const InspectorView({super.key, this.showLessonReturn = false});
+  const InspectorView({
+    super.key,
+    this.showLessonReturn = false,
+    this.applicationName = 'Draw',
+    this.legacyDraw = true,
+  });
   final bool showLessonReturn;
+  final String applicationName;
+  final bool legacyDraw;
   @override
   State<InspectorView> createState() => _InspectorViewState();
 }
@@ -74,6 +82,17 @@ class _InspectorViewState extends State<InspectorView> {
 
   Future<void> initialize() async {
     await command('inspector', true);
+  }
+
+  Future<void> selectWindow() async {
+    try {
+      final id = await chooseSessionWindow(context);
+      if (id != null && mounted) await command('selectApplicationWindow', id);
+    } on PlatformException catch (e) {
+      if (mounted) setState(() => error = e.message ?? e.code);
+    } on MissingPluginException {
+      if (mounted) setState(() => error = 'Die Windows-Anbindung fehlt.');
+    }
   }
 
   @override
@@ -223,6 +242,15 @@ class _InspectorViewState extends State<InspectorView> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (!widget.legacyDraw && state['connected'] != true)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: selectWindow,
+                    icon: const Icon(Icons.window_outlined),
+                    label: const Text('Fenster auswählen'),
+                  ),
+                ),
               if (widget.showLessonReturn)
                 Align(
                   alignment: Alignment.centerLeft,
@@ -233,7 +261,7 @@ class _InspectorViewState extends State<InspectorView> {
                   ),
                 ),
               Text(
-                'Draw · Accessibility-Baum',
+                '${widget.applicationName} · Accessibility-Baum',
                 style: Theme.of(context).textTheme.titleMedium
                     ?.copyWith(fontWeight: FontWeight.bold),
               ),
@@ -293,7 +321,7 @@ class _InspectorViewState extends State<InspectorView> {
                         child: Text(
                           state['connected'] == true
                               ? 'Accessibility-Baum wird gelesen …'
-                              : 'Draw wird gestartet …',
+                              : 'Zielsoftware verbinden …',
                         ),
                       )
                     : LayoutBuilder(
@@ -341,6 +369,7 @@ class _InspectorViewState extends State<InspectorView> {
                                             selector = NodeSelector.capture(
                                               node,
                                               nodes,
+                                              legacyDraw: widget.legacyDraw,
                                             );
                                             command('selectNode', node.id);
                                           },

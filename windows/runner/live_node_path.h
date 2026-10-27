@@ -45,7 +45,7 @@ template <typename Handle> struct Result {
 // Unreadable siblings invalidate indexed selection rather than shifting indices.
 template <typename Handle, typename Provider>
 Result<Handle> Resolve(const Handle &root, const std::vector<Segment> &path,
-                       Provider &provider) {
+                       Provider &provider, bool draw_compatibility = true) {
   Result<Handle> result;
   if (path.empty() || path.size() > 64 || provider.Cancelled()) return result;
   const auto root_metadata = provider.Read(root);
@@ -69,7 +69,7 @@ Result<Handle> Resolve(const Handle &root, const std::vector<Segment> &path,
       const auto type = Normalize(metadata.type);
       const bool unnamed = Normalize(metadata.name).empty();
       const int sibling_index = unnamed ? unnamed_indices[type]++ : -1;
-      if (TitleWrapper(metadata, root_metadata)) {
+      if (draw_compatibility && TitleWrapper(metadata, root_metadata)) {
         self(self, child, index, depth + 1);
         continue;
       }

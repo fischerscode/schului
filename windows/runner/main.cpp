@@ -53,7 +53,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE previous,
   learning_app_project.set_dart_entrypoint_arguments({"learningApp"});
   FlutterWindow lesson(project), overlay(overlay_project, "overlay"),
       hint(hint_project, "hint"), learning_app(learning_app_project, "learningApp");
-  if (!lesson.Create(L"SchulUI – Draw entdecken", {0, 0}, {400, 800}) ||
+  if (!lesson.Create(L"schului – Unterricht", {0, 0}, {400, 800}) ||
       !overlay.Create(L"SchulUI – Markierungen", {0, 0}, {800, 800}) ||
       !hint.Create(L"SchulUI – Hinweis", {0, 0}, {360, 210}) ||
       !learning_app.Create(L"LearningApps – Was hast du gelernt?", {0, 0}, {1100, 760}))

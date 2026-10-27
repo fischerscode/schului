@@ -1,4 +1,4 @@
-import 'draw_target.dart';
+import 'application_target.dart';
 
 class LessonStep {
   const LessonStep(this.title, this.content, this.hint);
@@ -50,6 +50,6 @@ class LessonText extends LessonSpan {
 
 class LessonLink extends LessonSpan {
   const LessonLink(super.text, {this.target, this.help});
-  final DrawTarget? target;
+  final ApplicationTarget? target;
   final String? help;
 }

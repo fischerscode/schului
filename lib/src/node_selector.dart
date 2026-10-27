@@ -62,40 +62,52 @@ bool _titleWrapper(AccessibilityNode node, AccessibilityNode root) =>
 
 /// Named segments use semantic identity; unnamed segments use sibling indices.
 class NodeSelector {
-  const NodeSelector(this.path);
+  const NodeSelector(this.path, {this.legacyDraw = true});
   final List<PathSegment> path;
+  final bool legacyDraw;
   factory NodeSelector.capture(
     AccessibilityNode node,
-    List<AccessibilityNode> nodes,
-  ) {
+    List<AccessibilityNode> nodes, {
+    bool legacyDraw = true,
+  }) {
     final chain = _chain(node, {for (final n in nodes) n.id: n});
     return NodeSelector([
       for (final n in chain)
-        if (n == chain.first || n == node || !_titleWrapper(n, chain.first))
+        if (!legacyDraw ||
+            n == chain.first ||
+            n == node ||
+            !_titleWrapper(n, chain.first))
           PathSegment(
             n.type,
-            (n == chain.first || _norm(n.type) == 'dokument') && n != node
+            (n == chain.first && (!legacyDraw || n != node)) ||
+                    (legacyDraw && _norm(n.type) == 'dokument' && n != node)
                 ? null
                 : n.name,
             index: n.name.trim().isEmpty && (n != chain.first || n == node)
                 ? _unnamedIndex(n, nodes)
                 : null,
           ),
-    ]);
+    ], legacyDraw: legacyDraw);
   }
   Map<String, Object> toJson() => {
     'version': 2,
+    if (!legacyDraw) 'mode': 'exact',
     'path': path.map((s) => s.toJson()).toList(),
   };
   factory NodeSelector.fromJson(Object? raw) {
     if (raw is! Map ||
         (raw['version'] != 1 && raw['version'] != 2) ||
         raw['path'] is! List ||
-        (raw['path'] as List).isEmpty) {
+        (raw['path'] as List).isEmpty ||
+        (raw['path'] as List).length > 64) {
       throw const FormatException(
         'Erwartet: version 1 oder 2 und ein nicht leerer path.',
       );
     }
+    if (raw.containsKey('mode') && raw['mode'] != 'exact') {
+      throw const FormatException('Unbekannter Pfadmodus.');
+    }
+    final legacyDraw = raw['mode'] != 'exact';
     final segments = <PathSegment>[];
     for (final entry in raw['path'] as List) {
       if (entry is! Map ||
@@ -113,7 +125,8 @@ class NodeSelector {
       segments.add(
         PathSegment(
           entry['type'] as String,
-          _norm(entry['type'] as String) == 'dokument' &&
+          legacyDraw &&
+                  _norm(entry['type'] as String) == 'dokument' &&
                   segments.length < (raw['path'] as List).length - 1
               ? null
               : entry['name'] as String?,
@@ -121,7 +134,7 @@ class NodeSelector {
         ),
       );
     }
-    return NodeSelector(segments);
+    return NodeSelector(segments, legacyDraw: legacyDraw);
   }
 
   NodeResolution resolve(
@@ -136,9 +149,13 @@ class NodeSelector {
       final indexed = path.any((segment) => segment.index != null);
       final chain = full
           .where(
-            (n) => indexed
-                ? n == full.first || n == node || !_titleWrapper(n, full.first)
-                : _semantic(n, full.first, node),
+            (n) =>
+                !legacyDraw ||
+                (indexed
+                    ? n == full.first ||
+                          n == node ||
+                          !_titleWrapper(n, full.first)
+                    : _semantic(n, full.first, node)),
           )
           .toList();
       if (chain.length != path.length) continue;
@@ -163,7 +180,7 @@ class NodeSelector {
         isAmbiguous: true,
       );
     }
-    if (!allowFallback) {
+    if (!allowFallback || !legacyDraw) {
       return const NodeResolution(
         null,
         'Pfad nicht vorhanden – keine Markierung.',

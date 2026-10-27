@@ -21,23 +21,6 @@ std::string Utf8(const std::wstring &value) {
   return result;
 }
 
-bool IsDraw(HWND window) {
-  if (!IsWindow(window) || !IsWindowVisible(window)) return false;
-  DWORD pid = 0;
-  GetWindowThreadProcessId(window, &pid);
-  if (pid == GetCurrentProcessId()) return false;
-  wchar_t title[1024]{};
-  GetWindowTextW(window, title, 1024);
-  if (std::wstring(title).find(L"LibreOffice Draw") == std::wstring::npos) return false;
-  HANDLE process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
-  if (!process) return false;
-  wchar_t executable[32768]{};
-  DWORD length = 32768;
-  const bool read = QueryFullProcessImageNameW(process, 0, executable, &length) != FALSE;
-  CloseHandle(process);
-  return read && live_path::Normalize(std::filesystem::path(executable).filename().wstring()) == L"soffice.bin";
-}
-
 class CaptureProvider : public live_uia::Provider {
  public:
   CaptureProvider(IUIAutomation *automation, IUIAutomationTreeWalker *walker,
@@ -73,7 +56,8 @@ TargetPicker::TargetPicker(HWND owner, flutter::BinaryMessenger *messenger)
     : owner_(owner), channel_(messenger, "schului/target-picker",
                              &flutter::StandardMethodCodec::GetInstance()) {
   channel_.SetMethodCallHandler([this](const auto &call, auto result) {
-    if (call.method_name() == "begin") Start(std::move(result));
+    if (call.method_name() == "begin") Start(call.arguments(), std::move(result));
+    else if (call.method_name() == "windows") result->Success(EncodableValue(target_app::List()));
     else if (call.method_name() == "cancel") { Cancel(); result->Success(); }
     else result->NotImplemented();
   });
@@ -85,8 +69,11 @@ TargetPicker::~TargetPicker() {
   if (overlay_) DestroyWindow(overlay_);
 }
 
-void TargetPicker::Start(std::unique_ptr<flutter::MethodResult<EncodableValue>> result) {
+void TargetPicker::Start(const EncodableValue *application, std::unique_ptr<flutter::MethodResult<EncodableValue>> result) {
   if (result_) { result->Error("busy", "Eine Zielauswahl ist bereits aktiv."); return; }
+  auto config = application ? target_app::Parse(*application) : std::optional<target_app::Config>(target_app::Config{});
+  if (!config) { result->Error("application", "Zuerst Zielsoftware auswählen."); return; }
+  application_ = *config;
   POINT cursor{};
   if (!GetCursorPos(&cursor)) {
     result->Error("desktop", "Die Mausposition ist nicht verfügbar. Zielauswahl auf dem entsperrten Windows-Desktop starten.");
@@ -216,7 +203,7 @@ void TargetPicker::ReadCursor() {
         };
         const HWND window = GetAncestor(WindowFromPoint(point), GA_ROOT);
         if (!automation) update.error = "Windows Accessibility ist nicht verfügbar.";
-        else if (!IsDraw(window)) update.error = "Über ein Element im geöffneten Draw-Fenster zeigen.";
+        else if (auto candidate = target_app::Read(window); !candidate || !target_app::Matches(*candidate, application_)) update.error = "Über ein Element der gewählten Zielsoftware zeigen.";
         else {
           live_uia::Handle root, element;
           ComPtr<IUIAutomationTreeWalker> walker;
@@ -232,7 +219,7 @@ void TargetPicker::ReadCursor() {
             }
             if (provider.Equal(chain.back(), root)) {
               std::reverse(chain.begin(), chain.end());
-              const auto path = live_path::Capture(chain, provider);
+              const auto path = live_path::Capture(chain, provider, application_.draw);
               BOOL offscreen = TRUE;
               RECT bounds{};
               if (path && SUCCEEDED(element->get_CurrentBoundingRectangle(&bounds)) &&
@@ -250,10 +237,12 @@ void TargetPicker::ReadCursor() {
                 const bool includes_client = chain.size() > 1 &&
                     live_path::Normalize(provider.Read(chain[1]).name).empty() &&
                     (provider.Read(chain[1]).type.empty() || live_path::Normalize(provider.Read(chain[1]).type) == L"element");
-                update.target = EncodableValue(EncodableMap{
-                  {EncodableValue("selector"), EncodableValue(EncodableMap{
+                EncodableMap selector{
                     {EncodableValue("version"), EncodableValue(2)},
-                    {EncodableValue("path"), EncodableValue(segments)}})},
+                    {EncodableValue("path"), EncodableValue(segments)}};
+                if (!application_.draw) selector[EncodableValue("mode")] = EncodableValue("exact");
+                update.target = EncodableValue(EncodableMap{
+                  {EncodableValue("selector"), EncodableValue(selector)},
                   {EncodableValue("includesUnnamedClient"), EncodableValue(includes_client)}});
                 const auto metadata = provider.Read(element);
                 update.label = Utf8(metadata.name.empty() ? metadata.type : metadata.name);
