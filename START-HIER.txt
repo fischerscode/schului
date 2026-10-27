@@ -2,22 +2,23 @@ schului
 -------
 
 schului.exe startet den Editor für Lehrkräfte.
-start-beispiel.cmd startet eine kurze Lernumgebung für Lernende.
-start-inspector.cmd öffnet den Draw-Inspector.
 
-Im Editor:
-- Ordnersymbol: Lernumgebung öffnen.
-- Speichersymbol: als .schului-Datei speichern.
-- Auge: Lernansicht ansehen.
-- Baum: Ziele in Draw erkunden und ihren JSON-Pfad kopieren.
-- Dreieck: die aktuelle Lernumgebung in Draw starten.
-- Text anklicken: bearbeiten oder als interaktiven Begriff verknüpfen.
-- „Ziel in Draw auswählen“: über ein Ziel im geöffneten Draw zeigen, mit F8
-  übernehmen; Esc bricht die Auswahl ab. Der Pfad wird automatisch eingefügt.
+1. Über das Zahnrad „Zielsoftware“ wählen: geöffnetes Fenster oder Programmdatei.
+2. Eigene Lernschritte, Texte und Tipps anlegen.
+3. Einen Text als „Interaktiver Begriff“ bearbeiten.
+4. „Ziel in Anwendung auswählen“ drücken, im geöffneten Zielprogramm auf ein
+   Element zeigen und F8 drücken. Esc bricht ab; der Pfad wird automatisch eingefügt.
+5. Speichern und mit dem Dreieck als Lernsitzung ausprobieren.
 
-LibreOffice muss auf dem Rechner installiert sein. Online-Übungen benötigen
-Internet und Microsoft Edge WebView2. Der gesamte Programmordner muss zusammen
-bleiben; die EXE allein genügt nicht.
+Bei mehreren passenden Programmfenstern bietet die Lernsitzung eine Fensterauswahl.
+Andere Rechner können andere Programmpfade haben; diese im Editor anpassen.
+Die Zielsoftware muss installiert bzw. bereits geöffnet sein. Manche Anwendungen
+stellen keine geeigneten Accessibility-Elemente für einzelne Hover-Ziele bereit.
 
-Aktueller Stand: erste Version mit LibreOffice Draw als unterstützter Anwendung.
-Den neuen Ablauf vor dem Unterricht auf einem Lernenden-PC ausprobieren.
+Draw ist nur ein optionales Beispiel. start-beispiel.cmd und start-inspector.cmd
+verwenden dieses Beispiel und benötigen LibreOffice. Andere Einheiten benötigen
+kein LibreOffice. Online-Übungen benötigen Internet und Microsoft Edge WebView2.
+
+Den ganzen Programmordner zusammenlassen; die EXE allein genügt nicht.
+Neue Lerndateien verwenden Formatversion 2; alte Draw-Dateien bleiben lesbar.
+Vor dem Unterricht auf einem Lernenden-PC testen.

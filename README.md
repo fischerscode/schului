@@ -1,137 +1,157 @@
 # schului
 
-A Windows tool for teachers to create interactive learning environments.
-German interface, Flutter/Dart, native Win32 and UI Automation integration.
+Create interactive teaching units for Windows software. Teachers compose steps,
+contextual help and hover targets; learners work in the real target application
+beside the instruction panel. The interface is German, built with Flutter/Dart,
+Win32 and Windows UI Automation (UIA).
 
-## Product direction
+## Teacher workflow
 
-Teachers compose learning steps and contextual help. Learners work in a real
-application alongside an instruction panel. Hovering linked terms highlights
-the corresponding application controls using semantic accessibility paths.
-LibreOffice Draw is the first supported application adapter.
+Start `build/windows/x64/runner/Release/schului.exe`. A new unit has no software
+selected. Use **Zielsoftware** (gear or the name in the footer):
 
-## Use
+1. Select a running application's window, or browse to its executable.
+2. Set a readable name. Under **Start und Fenster**, optionally enter arguments
+   (one argument per line), a window class and a title substring.
+3. Add and edit learning steps, paragraphs, lists, online activities and hints.
+4. To link a term, click its text, enable **Interaktiver Begriff**, choose
+   **Ziel in Anwendung auswählen**, point at the target and press F8. Esc cancels.
+5. Save a `.schului` file and test it with the play button.
 
-Start `build/windows/x64/runner/Release/schului.exe` to open the teacher editor.
-It starts with an editable Draw lesson. Add, duplicate, reorder or delete steps;
-click a text run to edit it or make it an interactive term. Choose **Ziel in Draw
-auswählen**, point at an element in an already open Draw window and press F8.
-The editor inserts the captured path automatically; Esc cancels without changing
-the previous path. A blue, click-through outline previews a uniquely resolved
-element. F8 captures the position at the key press, rather than the last preview.
-This does not click or activate the target. Presets and JSON paths from the
-inspector remain available. Paragraphs, bullet lists,
-online activities and per-step hints are supported.
+The picker previews a blue click-through outline. F8 captures the position at
+that key press and inserts the path after confirming unique identity. It does
+not click the application. The selected software must already be open to capture
+its targets. The inspector and manual JSON entry remain available.
 
-Use the eye to preview the instructions, the tree to discover Draw targets,
-and play to launch the current lesson in Draw. The editor stays open. Each launch
-uses a separate immutable snapshot; later edits apply to the next launch.
-Save/open `.schului` files with the folder/save buttons or Ctrl+O/Ctrl+S.
-New, open and window close ask about unsaved changes.
+Switching to different software asks before removing old target links; text and
+hints survive. Changing configuration for the same executable keeps the links.
+New/open/close handle unsaved changes. Ctrl+N/O/S provide standard file shortcuts.
+The eye previews instructions. Each play/inspector launch uses an immutable
+snapshot, so later edits affect the next session.
 
-For learners, distribute the complete portable folder and a `.schului` file:
+Draw is an optional example under **Vorlagen**, with a separate compatibility
+adapter for its isolated profile and historical selectors. It is not required
+for a generic unit. Draw-specific target presets appear only in that mode.
+
+## Learner runtime
 
 ```powershell
-.\schului.exe --lesson-file .\examples\erste-zeichnung.schului
+.\schului.exe --lesson-file .\my-unit.schului
 ```
 
-Copying the EXE alone is insufficient: the adjacent DLLs and `data` directory
-are required. `tools/package-windows.ps1` creates a portable ZIP with a sample
-lesson and launch shortcuts. It does not install LibreOffice or publish anything.
+The runtime reuses a uniquely matching open window or starts the configured
+executable with separately quoted arguments, without a command shell. Matching
+uses the full executable path and optional class/title filters, not a global
+window-title guess. If multiple windows match, use **Fenster auswählen**; the
+runtime does not arbitrarily choose the first. Minimize/restore and the 25/75
+instruction/application split retain the original Draw runtime behavior.
+Closing the session restores window geometry and leaves the target app open.
 
-## Development
+Program locations can differ across computers: update the unit's executable
+path in the editor on the destination machine. Applications requiring a launcher,
+Store activation or special startup can be opened manually first; select the
+actual application window when authoring. The runtime launches ordinary executable
+files directly and does not install target software.
+
+## Portable package
+
+Run `tools/package-windows.ps1` to build a ZIP. `-SkipBuild` packages an existing
+release. Keep the whole extracted folder, including DLLs and `data`; the EXE alone
+is insufficient. `schului.exe` opens the general editor. The included
+`start-beispiel.cmd` and `start-inspector.cmd` demonstrate the optional Draw adapter.
+Embedded HTTPS activities require internet access and Edge WebView2.
+
+## Development and verification
 
 ```powershell
 fvm use
 fvm flutter pub get
-fvm dart format lib test
-fvm flutter analyze
-fvm flutter test
-fvm flutter build windows --release
-fvm flutter run -d windows
+fvm dart run melos run format
 fvm dart run melos run analyze
 fvm dart run melos run test
+fvm flutter build windows --release
+fvm flutter run -d windows
 .\tools\package-windows.ps1
 ```
 
-Install Visual Studio's Desktop development with C++ workload and LibreOffice
-for native builds and Draw sessions. WebView2 is needed for embedded activities.
+Visual Studio's Desktop development with C++ workload is needed for native builds.
+Flutter is pinned in `.fvmrc`; application dependencies are locked. Melos provides
+repeatable checks and private-package versioning without an aggregate changelog.
 
-## Architecture and format
+Flutter analysis, 48 tests, the Melos format check and the Windows release build
+pass. Tests cover software selection, settings retention during edits, file
+migration, generic exact paths, Draw regressions, picker insertion/cancellation,
+invalid input, narrow layouts and doubled text. Rendered views are inspected at
+`build/visual-review/teacher.png` and `target-picker.png`.
 
-- `lib/authoring`: teacher workspace, strict lesson codec, file dialogs and
-  snapshot launch. Native window close is routed through unsaved-change handling.
-- `lib/lessons`: typed content blocks and spans, shared instruction renderer,
-  Draw example and verified exact target paths.
-- `lib/src`: UIA selectors, inspector, embedded activity and Schulzeug theme.
-- `windows/runner`: inherited application process detection, layout,
-  click-through overlays and background UIA queries. Teacher mode uses a normal
-  window and does not start Draw. Learner mode retains the 25/75 split.
-- `windows/runner/target_picker.*`: temporary F8/Esc hotkeys, a separate MTA UIA
-  worker and a non-activating outline. Only visible main windows belonging to
-  `soffice.bin` and titled LibreOffice Draw are accepted. The raw ancestor chain
-  is captured with title-wrapper and unnamed-sibling rules matching the runtime,
-  then resolved again to verify that it uniquely identifies the hit element.
-  COM objects remain on that worker; only content/geometry crosses to the UI.
-  Queries use bounded traversal and UIA timeouts where supported. Provider calls
-  cannot be assumed to obey a guaranteed total timeout.
-
-The picker uses Microsoft's [ElementFromPoint API](https://learn.microsoft.com/en-us/windows/win32/api/uiautomationclient/nf-uiautomationclient-iuiautomation-elementfrompoint),
-[UIA threading guidance](https://github.com/MicrosoftDocs/win32/blob/docs/desktop-src/WinAuto/uiauto-threading.md),
-and [layered window behavior](https://learn.microsoft.com/en-us/windows/win32/winmsg/window-features).
-
-`.schului` is UTF-8 JSON, format `schului.lesson`, version 1, application
-`libreoffice.draw`; maximum file size 4 MB. Unknown versions, unknown content
-types, malformed paths and non-HTTPS activities are rejected. It contains text,
-hints and semantic paths, never persisted runtime IDs or screen coordinates.
-Save writes a sibling staging file before replacing the destination. Future
-format changes require explicit version handling and fixture tests.
-
-FlatBuffers was considered for binary interchange. This first document format
-uses inspectable text so teachers can exchange and diagnose selector data without
-binary tooling. There is no relational query or migration need for Drift yet.
-Neither generator nor database is introduced without a concrete use case.
-
-## Verification and current limits
-
-Flutter analysis, the 43 automated tests and a Windows release build pass. Tests
-cover rich-content round trips, replacing files, invalid files, exact selector
-resolution, editor operations, narrow layouts and doubled text size. The rendered
-teacher workspace is inspected at `build/visual-review/teacher.png`.
-Melos package discovery and its format script are also verified. The new dialog
-is rendered at `build/visual-review/target-picker.png`. Picker tests cover
-insertion, cancellation, malformed native paths and visible platform errors.
-
-The pure native capture regression test also passes (duplicate names, unnamed
-sibling indices, title changes, unreadable siblings, cancellation, and both client
-wrapper layouts). After configuring a Flutter Windows build, run it with:
+Two native regression tests cover exact capture, duplicate/unnamed elements,
+software/window matching, significant path spaces and Windows argument quoting:
 
 ```powershell
 $nativeCmake = (Select-String -Path build/windows/x64/CMakeCache.txt -Pattern '^CMAKE_COMMAND:INTERNAL=').Line.Split('=', 2)[1]
-& $nativeCmake --build build/windows/x64 --config Release --target captured_path_test
+& $nativeCmake --build build/windows/x64 --config Release --target captured_path_test application_config_test
 .\build\windows\x64\tests\Release\captured_path_test.exe
+.\build\windows\x64\tests\Release\application_config_test.exe
 ```
 
-Native manual acceptance of this new teacher-to-Draw flow is still pending:
-The first Computer Use launch approval timed out; the subsequent picker check
-failed with `GetCursorPos: access denied`. The build does not establish working
-transparency, click-through, native save dialogs or target geometry on a learner
-machine. Test those with installed LibreOffice, and at 100/125/150% Windows DPI.
-The inherited adapter primarily targets a single monitor and German LibreOffice
-UIA names; other application adapters and arbitrary UI languages are not supported.
-The new picker requires an unlocked interactive desktop and already open Draw.
-Popup menus/dialogs outside the main Draw window are not accepted. In live
-acceptance, verify F8, Esc, repeated selection, an ambiguous target, window close,
-and preservation of unsaved lesson changes. An already occupied hotkey produces
-a visible error instead of starting a picker that cannot be confirmed/cancelled.
-No installer, file association, progress tracking or automatic task assessment is
-included. Embedded online activities require internet access and WebView2.
+Live desktop acceptance is still pending: Computer Use previously failed with
+`GetCursorPos: access denied`. Compilation and rendered widgets do not verify
+native click-through, screen geometry, native dialogs or compatibility with every
+application. Test the teacher-to-learner flow on actual school PCs, including
+100/125/150% DPI, F8/Esc, multiple windows and unsaved work.
 
-Some inherited lesson paths disagreed with the checked-in Inspector exports.
-The new project restores the full sidebar/size/fill paths from those fixtures and
-updates obsolete label assertions without weakening exact matching. The source
-repository is unchanged; unrecognized LibreOffice layouts need fresh paths from
-the inspector rather than a loose name fallback.
+## Application compatibility
+
+Units can target arbitrary Windows applications; individual hover marks require
+usable UIA elements. Custom canvases, games, remote desktops and inaccessible
+controls may expose no unique element at the desired granularity. Keep instructions
+and hints usable when a target cannot be identified; no coordinates or image-based
+guessing are substituted. The picker reports missing/ambiguous paths.
+
+The runtime currently attaches a top-level main window. Separate owned popup
+windows and dialog-only workflows are not captured. UI language, version or
+control-name changes may require recapturing targets. Elevated/protected apps can
+prevent accessibility access. The original session layout primarily targets a
+single monitor. There is no installer, file association, progress tracking or
+automatic assessment yet.
+
+## Data and architecture
+
+`.schului` is UTF-8 JSON (`schului.lesson`), maximum 4 MB. New writes use **version
+2** with a typed application configuration: unconfigured draft, generic Windows
+software or the Draw compatibility adapter. Version 1 Draw files remain readable
+and migrate on save; older schului releases cannot read new version 2 files.
+Executable arguments are a list, never an embedded shell command. Window handles,
+process IDs and screen coordinates are not persisted.
+
+Generic selectors store `mode: exact`, the full raw ancestor chain, element names,
+types and unnamed-sibling indices. Only the root's mutable caption is omitted.
+They do not use Draw's title-wrapper removal, document-name removal, client-layout
+variants or loose fallback. Historic Draw selectors retain their explicit
+compatibility behavior. `ApplicationTarget` is the general domain type;
+`DrawTarget` remains a compatibility alias for existing lesson code.
+
+- `lib/authoring`: editor, software settings, versioned codec, file dialogs and
+  immutable snapshot launch.
+- `lib/lessons`: typed content, shared renderer, general targets and Draw example.
+- `lib/src`: selectors, inspector, embedded activity and Schulzeug theme.
+- `windows/runner/application_config.h`: executable/window identity and argument
+  quoting shared by runtime and picker.
+- `windows/runner/target_picker.*`: temporary hotkeys, outline and separate MTA UIA
+  worker. Capture is resolved again to verify identity before insertion.
+- `windows/runner/desktop_session.*`: application connection, window layout and
+  diagnostics, with the legacy Draw startup branch kept separately.
+
+COM objects stay on their worker. Traversal and supported UIA timeouts bound work;
+foreign providers cannot be assumed to obey a guaranteed total timeout. Relevant
+Microsoft documentation: [ElementFromPoint](https://learn.microsoft.com/en-us/windows/win32/api/uiautomationclient/nf-uiautomationclient-iuiautomation-elementfrompoint),
+[UIA threading](https://github.com/MicrosoftDocs/win32/blob/docs/desktop-src/WinAuto/uiauto-threading.md),
+[layered windows](https://learn.microsoft.com/en-us/windows/win32/winmsg/window-features).
+
+Files are written to a sibling staging file before replacement. Unsupported
+versions and malformed content are rejected. Inspectable JSON fits this initial
+interchange workflow; FlatBuffers and Drift are not introduced without a binary
+or relational persistence requirement.
 
 ## Sources and conventions
 
@@ -142,5 +162,5 @@ the inspector rather than a loose name fallback.
 - Design: `//wsl.localhost/Ubuntu/home/maximilian/dev/schulzeug_design`, revision
   `5e18fe67b88f17661d84ba5286aa0033ea6152d1`.
 
-The source repositories remain independent and unchanged. See AGENTS.md for
-the canonical specifications. Flutter is pinned in `.fvmrc`.
+These source repositories remain independent and unchanged. See AGENTS.md for
+the canonical specifications and package CHANGELOG.md for format compatibility.
