@@ -29,10 +29,6 @@ New/open/close handle unsaved changes. Ctrl+N/O/S provide standard file shortcut
 The eye previews instructions. Each play/inspector launch uses an immutable
 snapshot, so later edits affect the next session.
 
-Draw is an optional example under **Vorlagen**, with a separate compatibility
-adapter for its isolated profile and historical selectors. It is not required
-for a generic unit. Draw-specific target presets appear only in that mode.
-
 ## Learner runtime
 
 ```powershell
@@ -43,8 +39,9 @@ The runtime reuses a uniquely matching open window or starts the configured
 executable with separately quoted arguments, without a command shell. Matching
 uses the full executable path and optional class/title filters, not a global
 window-title guess. If multiple windows match, use **Fenster auswählen**; the
-runtime does not arbitrarily choose the first. Minimize/restore and the 25/75
-instruction/application split retain the original Draw runtime behavior.
+runtime does not arbitrarily choose the first. Instructions use 25% of the
+work area and the target application uses 75%; minimizing the target hides the
+lesson and restoring it brings the lesson back.
 Closing the session restores window geometry and leaves the target app open.
 
 Program locations can differ across computers: update the unit's executable
@@ -58,7 +55,7 @@ files directly and does not install target software.
 Run `tools/package-windows.ps1` to build a ZIP. `-SkipBuild` packages an existing
 release. Keep the whole extracted folder, including DLLs and `data`; the EXE alone
 is insufficient. `schului.exe` opens the general editor. The included
-`start-beispiel.cmd` and `start-inspector.cmd` demonstrate the optional Draw adapter.
+`start-inspector.cmd path-to-unit.schului` opens the inspector for that unit.
 Embedded HTTPS activities require internet access and Edge WebView2.
 
 ## Development and verification
@@ -78,11 +75,10 @@ Visual Studio's Desktop development with C++ workload is needed for native build
 Flutter is pinned in `.fvmrc`; application dependencies are locked. Melos provides
 repeatable checks and private-package versioning without an aggregate changelog.
 
-Flutter analysis, 48 tests, the Melos format check and the Windows release build
-pass. Tests cover software selection, settings retention during edits, file
-migration, generic exact paths, Draw regressions, picker insertion/cancellation,
-invalid input, narrow layouts and doubled text. Rendered views are inspected at
-`build/visual-review/teacher.png` and `target-picker.png`.
+Automated checks cover software selection, settings retention during edits, file
+round trips, exact paths, picker insertion/cancellation, invalid input, narrow
+layouts and doubled text. Rendered views are inspected at
+`build/visual-review/teacher.png`, `target-picker.png` and `application-settings.png`.
 
 Two native regression tests cover exact capture, duplicate/unnamed elements,
 software/window matching, significant path spaces and Windows argument quoting:
@@ -141,30 +137,29 @@ automatic assessment yet.
 
 ## Data and architecture
 
-`.schului` is UTF-8 JSON (`schului.lesson`), maximum 4 MB. New writes use **version
-2** with a typed application configuration: unconfigured draft, generic Windows
-software or the Draw compatibility adapter. Version 1 Draw files remain readable
-and migrate on save; older schului releases cannot read new version 2 files.
+`.schului` is UTF-8 JSON (`schului.lesson`), maximum 4 MB. Files use **version
+2** with a typed application configuration: unconfigured draft or Windows software.
+Only version 2 files and version 2 exact selectors are supported. Older files
+and application-specific configurations are rejected; create a new unit and
+recapture its targets. Existing general-purpose version 2 units remain readable.
 Executable arguments are a list, never an embedded shell command. Window handles,
 process IDs and screen coordinates are not persisted.
 
 Generic selectors store `mode: exact`, the full raw ancestor chain, element names,
 types and unnamed-sibling indices. Only the root's mutable caption is omitted.
-They do not use Draw's title-wrapper removal, document-name removal, client-layout
-variants or loose fallback. Historic Draw selectors retain their explicit
-compatibility behavior. `ApplicationTarget` is the general domain type;
-`DrawTarget` remains a compatibility alias for existing lesson code.
+Paths must resolve uniquely; missing ancestors or duplicate targets produce no
+highlight. `ApplicationTarget` is the shared domain type.
 
 - `lib/authoring`: editor, software settings, versioned codec, file dialogs and
   immutable snapshot launch.
-- `lib/lessons`: typed content, shared renderer, general targets and Draw example.
+- `lib/lessons`: typed content, shared renderer, application-independent targets.
 - `lib/src`: selectors, inspector, embedded activity and Schulzeug theme.
 - `windows/runner/application_config.h`: executable/window identity and argument
   quoting shared by runtime and picker.
 - `windows/runner/target_picker.*`: temporary hotkeys, outline and separate MTA UIA
   worker. Capture is resolved again to verify identity before insertion.
 - `windows/runner/desktop_session.*`: application connection, window layout and
-  diagnostics, with the legacy Draw startup branch kept separately.
+  diagnostics, using the configured executable and window filters.
 
 COM objects stay on their worker. Traversal and supported UIA timeouts bound work;
 foreign providers cannot be assumed to obey a guaranteed total timeout. Relevant
@@ -179,8 +174,6 @@ or relational persistence requirement.
 
 ## Sources and conventions
 
-- Runtime derived from `../schului-draw`, revision
-  `212d4ae891f8d3f9ace1fe6098c3d03cd2a6d711`; MIT license retained.
 - Engineering: `//wsl.localhost/Ubuntu/home/maximilian/dev/engineering_guidelines`,
   revision `e22679bdc13a68368e0be41df443d27530fb5bb3`.
 - Design: `//wsl.localhost/Ubuntu/home/maximilian/dev/schulzeug_design`, revision
