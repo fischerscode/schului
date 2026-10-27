@@ -4,10 +4,35 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:schului/authoring/lesson_document.dart';
 import 'package:schului/authoring/lesson_files.dart';
+import 'package:schului/lessons/lesson_model.dart';
 
 import 'sample_lesson.dart';
 
 void main() {
+  test(
+    'older URL blocks use neutral defaults; malformed pupil texts are rejected',
+    () {
+      final raw = jsonDecode(sampleDocument().encode()) as Map<String, dynamic>;
+      final block = raw['steps'][4]['content'][0] as Map<String, dynamic>;
+      block.remove('title');
+      block.remove('instructions');
+      final document = LessonDocument.decode(jsonEncode(raw));
+      final page = document.steps[4].content.single as LessonActivity;
+      expect(page.title, 'Webseite');
+      expect(page.instructions, '');
+      block['title'] = '';
+      expect(
+        () => LessonDocument.decode(jsonEncode(raw)),
+        throwsFormatException,
+      );
+      block['title'] = 'Meine Webseite';
+      block['instructions'] = 42;
+      expect(
+        () => LessonDocument.decode(jsonEncode(raw)),
+        throwsFormatException,
+      );
+    },
+  );
   test(
     'all authored content, help and exact UIA paths survive a file round trip',
     () async {

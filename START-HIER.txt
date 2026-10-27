@@ -34,9 +34,12 @@ Andere Rechner können andere Programmpfade haben; diese im Editor anpassen.
 Die Zielsoftware muss installiert bzw. bereits geöffnet sein. Manche Anwendungen
 stellen keine geeigneten Accessibility-Elemente für einzelne Hover-Ziele bereit.
 
+Über „Webseite“ lassen sich HTTPS-Adressen einbinden. Buttontext, Fenstertitel
+und Arbeitsauftrag sind frei bearbeitbar. Zum Anzeigen wird Microsoft Edge
+WebView2 benötigt.
+
 start-inspector.cmd mit einer .schului-Datei als Argument öffnet den Inspector
-für diese Unterrichtseinheit. Online-Übungen benötigen Internet und Microsoft
-Edge WebView2.
+für diese Unterrichtseinheit.
 
 Den ganzen Programmordner zusammenlassen; die EXE allein genügt nicht.
 Unterstützt werden Lerndateien der Version 2 mit allgemeinen Programmeinstellungen

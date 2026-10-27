@@ -6,18 +6,19 @@ import 'package:webview_windows/webview_windows.dart';
 
 import 'windows_bridge.dart';
 
-class LearningAppView extends StatefulWidget {
-  const LearningAppView({super.key});
+class WebPageView extends StatefulWidget {
+  const WebPageView({super.key});
   @override
-  State<LearningAppView> createState() => _LearningAppViewState();
+  State<WebPageView> createState() => _WebPageViewState();
 }
 
-class _LearningAppViewState extends State<LearningAppView> {
+class _WebPageViewState extends State<WebPageView> {
   WebviewController? controller;
   Timer? timer;
   final subscriptions = <StreamSubscription<dynamic>>[];
   bool busy = false, visible = false, loading = true;
   String? loadedUrl, error;
+  String pageTitle = 'Webseite', instructions = '';
 
   @override
   void initState() {
@@ -32,8 +33,16 @@ class _LearningAppViewState extends State<LearningAppView> {
     try {
       final state = await bridge.invokeMapMethod<String, dynamic>('state');
       if (!mounted || state == null) return;
-      final nextVisible = state['learningAppVisible'] == true;
-      final url = state['learningAppUrl'] as String? ?? '';
+      final nextVisible = state['webPageVisible'] == true;
+      final url = state['webPageUrl'] as String? ?? '';
+      final nextTitle = state['webPageTitle'] as String? ?? 'Webseite';
+      final nextInstructions = state['webPageInstructions'] as String? ?? '';
+      if (pageTitle != nextTitle || instructions != nextInstructions) {
+        setState(() {
+          pageTitle = nextTitle;
+          instructions = nextInstructions;
+        });
+      }
       final changed = nextVisible != visible;
       visible = nextVisible;
       if (!visible) {
@@ -68,7 +77,7 @@ class _LearningAppViewState extends State<LearningAppView> {
           view.onLoadError.listen((_) {
             if (mounted) {
               setState(() {
-                error = 'Die LearningApp konnte nicht geladen werden. Prüfe die Internetverbindung und versuche es erneut.';
+                error = 'Die Webseite konnte nicht geladen werden. Prüfe die Internetverbindung und versuche es erneut.';
                 loading = false;
               });
             }
@@ -97,7 +106,8 @@ class _LearningAppViewState extends State<LearningAppView> {
     } catch (_) {
       if (mounted) {
         setState(
-          () => error = 'Die LearningApp konnte nicht geöffnet werden. Versuche es erneut.',
+          () => error =
+              'Die Webseite konnte nicht geöffnet werden. Versuche es erneut.',
         );
       }
     } finally {
@@ -105,7 +115,7 @@ class _LearningAppViewState extends State<LearningAppView> {
     }
   }
 
-  Future<void> close() => bridge.invokeMethod<void>('learningApp', null);
+  Future<void> close() => bridge.invokeMethod<void>('webPage', null);
 
   @override
   void dispose() {
@@ -118,7 +128,9 @@ class _LearningAppViewState extends State<LearningAppView> {
   }
 
   @override
-  Widget build(BuildContext context) => LearningAppPanel(
+  Widget build(BuildContext context) => WebPagePanel(
+    title: pageTitle,
+    instructions: instructions,
     onClose: () => unawaited(close()),
     onRetry: () => unawaited(sync(reload: true)),
     loading: loading,
@@ -127,19 +139,22 @@ class _LearningAppViewState extends State<LearningAppView> {
   );
 }
 
-class LearningAppPanel extends StatelessWidget {
-  const LearningAppPanel({
+class WebPagePanel extends StatelessWidget {
+  const WebPagePanel({
     super.key,
     required this.child,
     required this.onClose,
     required this.onRetry,
     this.loading = false,
     this.error,
+    this.title = 'Webseite',
+    this.instructions = '',
   });
   final Widget child;
   final VoidCallback onClose, onRetry;
   final bool loading;
   final String? error;
+  final String title, instructions;
 
   @override
   Widget build(BuildContext context) => CallbackShortcuts(
@@ -155,12 +170,17 @@ class LearningAppPanel extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(24, 12, 12, 8),
                 child: Row(
                   children: [
-                    const Icon(Icons.quiz_outlined, color: Color(0xFF2563EB)),
+                    const Icon(
+                      Icons.language_outlined,
+                      color: Color(0xFF2563EB),
+                    ),
                     const SizedBox(width: 12),
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        'LearningApps – Was hast du gelernt?',
-                        style: TextStyle(
+                        title,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
@@ -174,6 +194,21 @@ class LearningAppPanel extends StatelessWidget {
                   ],
                 ),
               ),
+              if (instructions.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.sizeOf(context).height * .25,
+                    ),
+                    child: SingleChildScrollView(
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(instructions),
+                      ),
+                    ),
+                  ),
+                ),
               SizedBox(
                 height: 3,
                 child: loading && error == null
@@ -190,7 +225,7 @@ class LearningAppPanel extends StatelessWidget {
                               child: Card(
                                 child: Padding(
                                   padding: EdgeInsets.all(24),
-                                  child: Text('LearningApp wird geladen …'),
+                                  child: Text('Webseite wird geladen …'),
                                 ),
                               ),
                             ),

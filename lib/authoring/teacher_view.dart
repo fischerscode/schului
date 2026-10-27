@@ -426,17 +426,23 @@ class _TeacherViewState extends State<TeacherView> {
   Future<void> activity({int? index}) async {
     final existing = index == null ? null : step.content[index];
     final label = TextEditingController(
-      text: existing is LessonActivity ? existing.label : 'Übung öffnen',
+      text: existing is LessonActivity ? existing.label : 'Webseite öffnen',
     );
     final url = TextEditingController(
       text: existing is LessonActivity ? existing.url : '',
+    );
+    final pageTitle = TextEditingController(
+      text: existing is LessonActivity ? existing.title : 'Webseite',
+    );
+    final instructions = TextEditingController(
+      text: existing is LessonActivity ? existing.instructions : '',
     );
     String? validation;
     final result = await showDialog<LessonActivity>(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Online-Übung'),
+          title: const Text('Webseite'),
           content: SizedBox(
             width: 440,
             child: SingleChildScrollView(
@@ -445,8 +451,22 @@ class _TeacherViewState extends State<TeacherView> {
                 children: [
                   TextField(
                     controller: label,
+                    decoration: const InputDecoration(labelText: 'Buttontext'),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: pageTitle,
                     decoration: const InputDecoration(
-                      labelText: 'Beschriftung',
+                      labelText: 'Fenstertitel',
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: instructions,
+                    minLines: 2,
+                    maxLines: 5,
+                    decoration: const InputDecoration(
+                      labelText: 'Arbeitsauftrag (optional)',
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -470,13 +490,18 @@ class _TeacherViewState extends State<TeacherView> {
               onPressed: () {
                 try {
                   if (label.text.trim().isEmpty) {
-                    throw const FormatException('Beschriftung eingeben.');
+                    throw const FormatException('Buttontext eingeben.');
+                  }
+                  if (pageTitle.text.trim().isEmpty) {
+                    throw const FormatException('Fenstertitel eingeben.');
                   }
                   Navigator.pop(
                     context,
                     LessonActivity(
                       label.text,
                       url: validateActivityUrl(url.text),
+                      title: pageTitle.text,
+                      instructions: instructions.text,
                     ),
                   );
                 } on FormatException catch (e) {
@@ -493,6 +518,8 @@ class _TeacherViewState extends State<TeacherView> {
     await Future<void>.delayed(const Duration(milliseconds: 250));
     label.dispose();
     url.dispose();
+    pageTitle.dispose();
+    instructions.dispose();
     if (result == null || !mounted) return;
     final blocks = [...step.content];
     if (index == null) {
@@ -615,11 +642,22 @@ class _TeacherViewState extends State<TeacherView> {
                             lessons: document.steps,
                             onHover: (_) {},
                             onSection: (_) {},
-                            onActivity: (url) => showDialog<void>(
+                            onActivity: (page) => showDialog<void>(
                               context: context,
                               builder: (context) => AlertDialog(
-                                title: const Text('Online-Übung'),
-                                content: SelectableText(url),
+                                title: Text(page.title),
+                                content: SingleChildScrollView(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      if (page.instructions.isNotEmpty)
+                                        Text(page.instructions),
+                                      SelectableText(page.url),
+                                    ],
+                                  ),
+                                ),
                                 actions: [
                                   TextButton(
                                     onPressed: () => Navigator.pop(context),
@@ -847,7 +885,7 @@ class _TeacherViewState extends State<TeacherView> {
             TextButton.icon(
               onPressed: activity,
               icon: const Icon(Icons.open_in_new, size: 20),
-              label: const Text('Online-Übung'),
+              label: const Text('Webseite'),
             ),
           ],
         ),
@@ -881,7 +919,7 @@ class _TeacherViewState extends State<TeacherView> {
                 child: Text(switch (block) {
                   LessonParagraph() => 'Absatz',
                   LessonBulletList() => 'Liste',
-                  LessonActivity() => 'Online-Übung',
+                  LessonActivity() => 'Webseite',
                 }, style: Theme.of(context).textTheme.bodySmall),
               ),
               action(
@@ -964,11 +1002,14 @@ class _TeacherViewState extends State<TeacherView> {
                 ),
               ],
             ),
-            LessonActivity() => ListTile(
-              leading: const Icon(Icons.open_in_new),
-              title: Text(block.label),
-              subtitle: Text(block.url),
-              onTap: () => activity(index: index),
+            LessonActivity() => Material(
+              type: MaterialType.transparency,
+              child: ListTile(
+                leading: const Icon(Icons.open_in_new),
+                title: Text(block.label),
+                subtitle: Text(block.url),
+                onTap: () => activity(index: index),
+              ),
             ),
           },
         ],

@@ -7,7 +7,7 @@ import 'lessons/lesson_content.dart';
 import 'lessons/lesson_model.dart';
 import 'src/windows_bridge.dart';
 import 'src/inspector_view.dart';
-import 'src/learning_app_view.dart';
+import 'src/web_page_view.dart';
 import 'authoring/lesson_document.dart';
 import 'authoring/lesson_files.dart';
 import 'authoring/teacher_view.dart';
@@ -27,7 +27,7 @@ Future<void> main(List<String> args) async {
         ? null
         : await readLessonFile(args[fileIndex + 1]);
     final role = args.isEmpty ? 'teacher' : args.first;
-    if (role != 'teacher' && role != 'learningApp' && document == null) {
+    if (role != 'teacher' && role != 'webPage' && document == null) {
       throw const FormatException('Eine Unterrichtseinheit auswählen.');
     }
     if (role == 'lesson' || role == 'inspector') {
@@ -78,7 +78,7 @@ class SchoolApp extends StatelessWidget {
       ('inspector', final lesson) => InspectorView(
         applicationName: lesson?.application.name ?? 'Zielsoftware',
       ),
-      ('learningApp', _) => const LearningAppView(),
+      ('webPage', _) => const WebPageView(),
       ('teacher', _) => const TeacherView(),
       (_, final lesson?) => SessionView(
         role: role,

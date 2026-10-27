@@ -47,14 +47,14 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE previous,
   overlay_project.set_dart_entrypoint_arguments(arguments("overlay"));
   flutter::DartProject hint_project(L"data");
   hint_project.set_dart_entrypoint_arguments(arguments("hint"));
-  flutter::DartProject learning_app_project(L"data");
-  learning_app_project.set_dart_entrypoint_arguments({"learningApp"});
+  flutter::DartProject web_page_project(L"data");
+  web_page_project.set_dart_entrypoint_arguments({"webPage"});
   FlutterWindow lesson(project), overlay(overlay_project, "overlay"),
-      hint(hint_project, "hint"), learning_app(learning_app_project, "learningApp");
+      hint(hint_project, "hint"), web_page(web_page_project, "webPage");
   if (!lesson.Create(L"schului – Unterricht", {0, 0}, {400, 800}) ||
       !overlay.Create(L"SchulUI – Markierungen", {0, 0}, {800, 800}) ||
       !hint.Create(L"SchulUI – Hinweis", {0, 0}, {360, 210}) ||
-      !learning_app.Create(L"LearningApps – Was hast du gelernt?", {0, 0}, {1100, 760}))
+      !web_page.Create(L"Webseite", {0, 0}, {1100, 760}))
     return EXIT_FAILURE;
   lesson.SetQuitOnClose(true);
   MSG message{};
@@ -63,7 +63,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE previous,
     DispatchMessage(&message);
   }
   Session().Restore();
-  learning_app.Destroy();
+  web_page.Destroy();
   hint.Destroy();
   overlay.Destroy();
   lesson.Destroy();

@@ -36,7 +36,8 @@ public:
   void SetStep(int value);
   void SetHover(const flutter::EncodableValue &target);
   void SetHint(bool value);
-  void SetLearningApp(const std::string &url);
+  void SetWebPage(const std::string &url, const std::string &title = "Webseite",
+                  const std::string &instructions = "");
   void SetInspector(bool enabled);
   bool SelectNode(const std::string &id);
   void Restore();
@@ -51,9 +52,9 @@ private:
   target_app::Config application_;
   bool configured_ = false;
   HWND preferred_window_ = nullptr;
-  HWND lesson_ = nullptr, overlay_ = nullptr, hint_ = nullptr, learning_app_ = nullptr;
-  bool learning_app_visible_ = false;
-  std::string learning_app_url_;
+  HWND lesson_ = nullptr, overlay_ = nullptr, hint_ = nullptr, web_page_ = nullptr;
+  bool web_page_visible_ = false;
+  std::string web_page_url_, web_page_title_ = "Webseite", web_page_instructions_;
   std::atomic<HWND> target_{nullptr};
   DWORD launched_pid_ = 0;
   std::filesystem::path launched_executable_;

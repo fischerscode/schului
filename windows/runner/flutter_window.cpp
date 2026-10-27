@@ -33,7 +33,7 @@ bool FlutterWindow::OnCreate() {
       return;
     }
     if (method == "state") {
-      result->Success(Session().State(role_ != "overlay" && role_ != "learningApp"));
+      result->Success(Session().State(role_ != "overlay" && role_ != "webPage"));
       return;
     }
     if (method == "configureApplication") {
@@ -82,13 +82,20 @@ bool FlutterWindow::OnCreate() {
         return;
       }
       Session().SetHint(*value);
-    } else if (method == "learningApp") {
-      const auto *url = call.arguments() ? std::get_if<std::string>(call.arguments()) : nullptr;
-      if (call.arguments() && !call.arguments()->IsNull() && !url) {
-        result->Error("invalid_argument", "LearningApp erwartet eine URL oder null.");
-        return;
+    } else if (method == "webPage") {
+      if (!call.arguments() || call.arguments()->IsNull()) {
+        Session().SetWebPage("");
+      } else {
+        const auto *page = std::get_if<flutter::EncodableMap>(call.arguments());
+        const auto url = page ? target_app::Text(*page, "url") : std::nullopt;
+        const auto title = page ? target_app::Text(*page, "title") : std::nullopt;
+        const auto instructions = page ? target_app::Text(*page, "instructions", true) : std::nullopt;
+        if (!url || !title || !instructions) {
+          result->Error("invalid_argument", "Webseite erwartet eine URL, einen Titel und einen Arbeitsauftrag.");
+          return;
+        }
+        Session().SetWebPage(target_app::Utf8(*url), target_app::Utf8(*title), target_app::Utf8(*instructions));
       }
-      Session().SetLearningApp(url ? *url : "");
     } else if (method == "inspector") {
       const auto *value =
           call.arguments() ? std::get_if<bool>(call.arguments()) : nullptr;
@@ -187,8 +194,8 @@ LRESULT FlutterWindow::MessageHandler(HWND hwnd, UINT message, WPARAM wparam,
     Session().SetHint(false);
     return 0;
   }
-  if (role_ == "learningApp" && message == WM_CLOSE) {
-    Session().SetLearningApp("");
+  if (role_ == "webPage" && message == WM_CLOSE) {
+    Session().SetWebPage("");
     return 0;
   }
   if (role_ == "overlay" && message == WM_MOUSEACTIVATE)

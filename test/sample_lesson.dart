@@ -37,7 +37,12 @@ const sampleSteps = [
     LessonParagraph([LessonText('Lies deinen Text.')]),
   ], ''),
   LessonStep('Üben', [
-    LessonActivity('Lückentext öffnen', url: 'https://example.org/exercise'),
+    LessonActivity(
+      'Lückentext öffnen',
+      url: 'https://example.org/exercise',
+      title: 'Informationen zur Recherche',
+      instructions: 'Lies die Seite und notiere zwei Stichpunkte.',
+    ),
   ], ''),
   LessonStep('Vergleichen', [
     LessonParagraph([LessonText('Vergleiche dein Ergebnis.')]),

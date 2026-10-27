@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Show arbitrary HTTPS pages with teacher-authored button labels, window titles
+  and optional instructions. Replace provider-specific URL window text with
+  neutral loading/error messages; preserve existing URL blocks with defaults.
 - Export student packages from the teacher editor, including the current lesson,
   relative BAT launcher, application runtime and license in a new portable folder.
 - Remove inspector and diagnostic exports from the learner menu; retain authoring

@@ -15,7 +15,7 @@ class LessonContent extends StatefulWidget {
   final ValueChanged<LessonLink?> onHover;
   final ValueChanged<int> onSection;
   final List<LessonStep> lessons;
-  final ValueChanged<String>? onActivity;
+  final ValueChanged<LessonActivity>? onActivity;
   final VoidCallback? onHint;
   @override
   State<LessonContent> createState() => _LessonContentState();
@@ -135,17 +135,17 @@ class _LessonContentState extends State<LessonContent> {
       onPressed: () async {
         widget.onHover(null);
         if (widget.onActivity case final action?) {
-          action(block.url);
+          action(block);
           return;
         }
         try {
-          await bridge.invokeMethod<void>('learningApp', block.url);
+          await bridge.invokeMethod<void>('webPage', block.toWebPageRequest());
         } catch (_) {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
-                'Die LearningApp konnte nicht geöffnet werden. Bitte starte SchulUI vollständig neu.',
+                'Die Webseite konnte nicht geöffnet werden. Bitte starte SchulUI vollständig neu.',
               ),
             ),
           );

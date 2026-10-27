@@ -14,6 +14,59 @@ import 'package:schului/src/schulzeug_theme.dart';
 import 'sample_lesson.dart';
 
 void main() {
+  testWidgets(
+    'teachers edit and reopen the button, window title and assignment for any URL',
+    (tester) async {
+      tester.view.physicalSize = const Size(1200, 1100);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        MaterialApp(home: TeacherView(initialDocument: sampleDocument())),
+      );
+      await tester.tap(find.text('Webseite').first);
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Buttontext'),
+        'Informationen öffnen',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Fenstertitel'),
+        'Unsere Recherche',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Arbeitsauftrag (optional)'),
+        'Finde drei Beispiele.',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextField, 'HTTPS-Adresse'),
+        'https://example.org/info',
+      );
+      await tester.tap(find.text('Übernehmen'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Informationen öffnen'));
+      await tester.tap(find.text('Informationen öffnen'));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<TextField>(find.widgetWithText(TextField, 'Fenstertitel'))
+            .controller
+            ?.text,
+        'Unsere Recherche',
+      );
+      expect(
+        tester
+            .widget<TextField>(
+              find.widgetWithText(TextField, 'Arbeitsauftrag (optional)'),
+            )
+            .controller
+            ?.text,
+        'Finde drei Beispiele.',
+      );
+      await tester.tap(find.text('Abbrechen'));
+      await tester.pumpAndSettle();
+    },
+  );
   testWidgets('cancelling student export keeps the current unsaved lesson', (
     tester,
   ) async {
@@ -194,6 +247,31 @@ void main() {
       final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
       if (bytes == null) fail('Missing settings PNG');
       await File('build/visual-review/application-settings.png')
+          .writeAsBytes(bytes.buffer.asUint8List());
+      image.dispose();
+    });
+    await tester.tap(find.text('Abbrechen'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Webseite').first);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Fenstertitel'),
+      'Unsere Recherche',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Arbeitsauftrag (optional)'),
+      'Lies die Seite und notiere zwei Stichpunkte.',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'HTTPS-Adresse'),
+      'https://example.org/info',
+    );
+    await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      final image = await render.toImage();
+      final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (bytes == null) fail('Missing URL dialog PNG');
+      await File('build/visual-review/url-editor.png')
           .writeAsBytes(bytes.buffer.asUint8List());
       image.dispose();
     });

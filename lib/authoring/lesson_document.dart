@@ -55,6 +55,8 @@ class LessonDocument {
                   'type': 'activity',
                   'label': block.label,
                   'url': block.url,
+                  'title': block.title,
+                  'instructions': block.instructions,
                 },
               },
           ],
@@ -99,6 +101,12 @@ class LessonDocument {
           'activity' => LessonActivity(
             _text(block['label']),
             url: validateActivityUrl(_text(block['url'])),
+            title: block.containsKey('title')
+                ? _text(block['title'])
+                : 'Webseite',
+            instructions: block.containsKey('instructions')
+                ? _text(block['instructions'], allowEmpty: true)
+                : '',
           ),
           _ => throw const FormatException('Unbekannter Inhaltsbaustein.'),
         });

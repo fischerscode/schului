@@ -34,8 +34,19 @@ class LessonBulletList extends LessonBlock {
 }
 
 class LessonActivity extends LessonBlock {
-  const LessonActivity(this.label, {required this.url});
-  final String label, url;
+  const LessonActivity(
+    this.label, {
+    required this.url,
+    this.title = 'Webseite',
+    this.instructions = '',
+  });
+  final String label, url, title, instructions;
+
+  Map<String, String> toWebPageRequest() => {
+    'url': url,
+    'title': title,
+    'instructions': instructions,
+  };
 }
 
 sealed class LessonSpan {

@@ -18,6 +18,11 @@ selected. Use **Zielsoftware** (gear or the name in the footer):
    **Ziel in Anwendung auswählen**, point at the target and press F8. Esc cancels.
 5. Save a `.schului` file and test it with the play button.
 
+Use **Webseite** for any HTTPS URL. Set the button text, window title and optional
+student instructions in its dialog. These texts are saved with the unit and
+included in the student export; existing URL blocks use the neutral title
+"Webseite" until edited. System loading/error messages remain neutral.
+
 Use **Schülerpaket exportieren** (archive icon) to create a complete student
 folder. Select its parent directory; schului creates a new folder named after
 the unit with `unterricht.schului`, `start-lernen.bat`, the schului runtime and

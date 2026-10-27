@@ -222,12 +222,12 @@ void DesktopSession::Register(const std::string &role, HWND hwnd) {
     overlay_ = hwnd;
   else if (role == "hint")
     hint_ = hwnd;
-  else if (role == "learningApp")
-    learning_app_ = hwnd;
+  else if (role == "webPage")
+    web_page_ = hwnd;
   else
     lesson_ = hwnd;
   SetWindowLongPtr(hwnd, GWL_STYLE, WS_POPUP | WS_CLIPCHILDREN);
-  if (role == "learningApp") {
+  if (role == "webPage") {
     SetWindowLongPtr(hwnd, GWL_STYLE, WS_POPUP | WS_CLIPCHILDREN | WS_BORDER);
     SetWindowLongPtr(hwnd, GWLP_HWNDPARENT, reinterpret_cast<LONG_PTR>(lesson_));
   }
@@ -323,7 +323,7 @@ void DesktopSession::Tick() {
           target, lesson_, overlay_, hint_, target_connected_once_,
           lesson_hidden_for_target_) == session_layout::Visibility::closed) {
     active_ = false;
-    if (learning_app_) ShowWindow(learning_app_, SW_HIDE);
+    if (web_page_) ShowWindow(web_page_, SW_HIDE);
     PostQuitMessage(0);
     return;
   }
@@ -344,7 +344,7 @@ void DesktopSession::Tick() {
           target, lesson_, overlay_, hint_, target_connected_once_,
           lesson_hidden_for_target_) == session_layout::Visibility::minimized) {
     active_ = false;
-    if (learning_app_) ShowWindow(learning_app_, SW_HIDE);
+    if (web_page_) ShowWindow(web_page_, SW_HIDE);
     return;
   }
   HWND foreground = GetForegroundWindow();
@@ -352,7 +352,7 @@ void DesktopSession::Tick() {
   GetWindowThreadProcessId(foreground, &foreground_pid);
   if (target)
     GetWindowThreadProcessId(target, &target_pid);
-  active_ = foreground == lesson_ || foreground == hint_ || foreground == learning_app_ ||
+  active_ = foreground == lesson_ || foreground == hint_ || foreground == web_page_ ||
             (target_pid && foreground_pid == target_pid);
   Place(lesson_, left, active_ ? HWND_TOPMOST : HWND_NOTOPMOST);
   if (target && active_ && IsWindowEnabled(target)) {
@@ -365,7 +365,7 @@ void DesktopSession::Tick() {
   }
   // Hide decorations over dialogs and unrelated applications.
   bool decorate =
-      active_ && target && IsWindowEnabled(target) && IsWindowVisible(target) && !learning_app_visible_;
+      active_ && target && IsWindowEnabled(target) && IsWindowVisible(target) && !web_page_visible_;
   if (overlay_) {
     Place(overlay_, target_rect_, decorate ? HWND_TOPMOST : HWND_NOTOPMOST);
     ShowWindow(overlay_, decorate ? SW_SHOWNOACTIVATE : SW_HIDE);
@@ -380,24 +380,30 @@ void DesktopSession::Tick() {
     Place(hint_, rect, decorate ? HWND_TOPMOST : HWND_NOTOPMOST);
     ShowWindow(hint_, decorate && hint_visible_ ? SW_SHOWNOACTIVATE : SW_HIDE);
   }
-  if (learning_app_) {
+  if (web_page_) {
     const auto rect = session_layout::CenteredActivity(monitor_, GetDpiForWindow(lesson_) / 96.0);
-    Place(learning_app_, rect, active_ ? HWND_TOPMOST : HWND_NOTOPMOST);
-    ShowWindow(learning_app_, learning_app_visible_ ? SW_SHOWNOACTIVATE : SW_HIDE);
+    Place(web_page_, rect, active_ ? HWND_TOPMOST : HWND_NOTOPMOST);
+    ShowWindow(web_page_, web_page_visible_ ? SW_SHOWNOACTIVATE : SW_HIDE);
   }
 }
-void DesktopSession::SetLearningApp(const std::string &url) {
+void DesktopSession::SetWebPage(const std::string &url, const std::string &title,
+                               const std::string &instructions) {
   {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (!url.empty()) learning_app_url_ = url;
-    learning_app_visible_ = !url.empty();
+    if (!url.empty()) {
+      web_page_url_ = url;
+      web_page_title_ = title;
+      web_page_instructions_ = instructions;
+    }
+    web_page_visible_ = !url.empty();
     hover_target_ = EncodableValue();
     hover_geometry_ = EncodableValue();
     ++hover_generation_;
     hover_bounds_changed_.notify_all();
   }
+  if (!url.empty() && web_page_) SetWindowTextW(web_page_, target_app::Wide(title).c_str());
   Tick();
-  SetForegroundWindow(learning_app_visible_ ? learning_app_ : lesson_);
+  SetForegroundWindow(web_page_visible_ ? web_page_ : lesson_);
 }
 void DesktopSession::SetStep(int value) {
   step_ = std::max(value, 0);
@@ -507,7 +513,7 @@ bool DesktopSession::SelectNode(const std::string &id) {
   return true;
 }
 void DesktopSession::Restore() {
-  if (learning_app_) ShowWindow(learning_app_, SW_HIDE);
+  if (web_page_) ShowWindow(web_page_, SW_HIDE);
   if (overlay_)
     ShowWindow(overlay_, SW_HIDE);
   if (hint_)
@@ -557,8 +563,10 @@ EncodableValue DesktopSession::State(bool include_nodes) {
       {EncodableValue("selection"), selection},
       {EncodableValue("step"), EncodableValue(step_)},
       {EncodableValue("hoverTarget"), hover_target_},
-      {EncodableValue("learningAppVisible"), EncodableValue(learning_app_visible_)},
-      {EncodableValue("learningAppUrl"), EncodableValue(learning_app_url_)},
+      {EncodableValue("webPageVisible"), EncodableValue(web_page_visible_)},
+      {EncodableValue("webPageUrl"), EncodableValue(web_page_url_)},
+      {EncodableValue("webPageTitle"), EncodableValue(web_page_title_)},
+      {EncodableValue("webPageInstructions"), EncodableValue(web_page_instructions_)},
       {EncodableValue("hoverGeometry"), hover_geometry_},
       {EncodableValue("hoverGeneration"), EncodableValue(static_cast<int64_t>(hover_generation_.load()))},
       {EncodableValue("hoverGeometryGeneration"), EncodableValue(static_cast<int64_t>(hover_geometry_generation_))},
