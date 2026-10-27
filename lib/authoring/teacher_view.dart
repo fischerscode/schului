@@ -10,6 +10,7 @@ import '../lessons/lesson_model.dart';
 import '../src/windows_bridge.dart';
 import 'lesson_document.dart';
 import 'lesson_files.dart';
+import 'student_package.dart';
 import 'span_dialog.dart';
 import 'target_application.dart';
 import 'application_settings.dart';
@@ -261,6 +262,33 @@ class _TeacherViewState extends State<TeacherView> {
     } finally {
       if (mounted) setState(() => busy = false);
     }
+  }
+
+  Future<void> exportPackage() async {
+    if (!validTitles()) return;
+    if (document.application is UnconfiguredApplication) {
+      await configureApplication();
+      if (!mounted || document.application is UnconfiguredApplication) return;
+    }
+    await guard(() async {
+      final snapshot = document;
+      final destination = await getDirectoryPath(
+        confirmButtonText: 'Hier exportieren',
+      );
+      if (destination == null) return;
+      final package = await exportStudentPackage(
+        document: snapshot,
+        destinationParent: Directory(destination),
+        runtimeExecutable: File(Platform.resolvedExecutable),
+        licenseText: await rootBundle.loadString('LICENSE'),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: SelectableText('Schülerpaket gespeichert: ${package.path}'),
+        ),
+      );
+    });
   }
 
   Future<void> run({bool inspector = false}) async {
@@ -530,6 +558,11 @@ class _TeacherViewState extends State<TeacherView> {
                     Icons.save_as_outlined,
                     'Speichern unter',
                     busy ? null : () => save(saveAs: true),
+                  ),
+                  action(
+                    Icons.archive_outlined,
+                    'Schülerpaket exportieren',
+                    busy ? null : exportPackage,
                   ),
                   const SizedBox(width: 8),
                   IconButton(

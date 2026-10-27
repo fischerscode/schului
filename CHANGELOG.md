@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Export student packages from the teacher editor, including the current lesson,
+  relative BAT launcher, application runtime and license in a new portable folder.
 - Remove inspector and diagnostic exports from the learner menu; retain authoring
   tools in the teacher editor. Include start-lernen.bat for direct lesson launch.
 - Use one software-independent authoring and learner workflow for all Windows

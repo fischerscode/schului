@@ -4,6 +4,13 @@ schului
 schului.exe startet den Editor für Lehrkräfte.
 
 Für Lernende:
+In der Lehreransicht über das Archivsymbol „Schülerpaket exportieren“ einen
+Zielordner wählen. Der neue Paketordner enthält die Einheit, die passende BAT
+und alle benötigten schului-Programmdateien. Den gesamten Ordner verteilen und
+start-lernen.bat als Schüler-Startpfad hinterlegen. Die Zielsoftware selbst
+muss auf den Schülerrechnern verfügbar sein.
+
+Beim manuellen Zusammenstellen:
 Die fertige Einheit als unterricht.schului neben schului.exe speichern.
 In der Schülerverwaltung start-lernen.bat als Startpfad hinterlegen.
 Diese öffnet direkt den Unterricht ohne Lehreransicht. Fehlt die Datei oder ist

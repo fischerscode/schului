@@ -11,7 +11,54 @@ import 'package:schului/authoring/target_application.dart';
 import 'package:schului/authoring/target_picker.dart';
 import 'package:schului/src/schulzeug_theme.dart';
 
+import 'sample_lesson.dart';
+
 void main() {
+  testWidgets('cancelling student export keeps the current unsaved lesson', (
+    tester,
+  ) async {
+    const fileSelector = MethodChannel('plugins.flutter.io/file_selector');
+    var folderRequests = 0;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(fileSelector, (call) async {
+          if (call.method == 'getDirectoryPath') {
+            folderRequests++;
+          }
+          return null;
+        });
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(fileSelector, null),
+    );
+    await tester.pumpWidget(
+      MaterialApp(home: TeacherView(initialDocument: sampleDocument())),
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Schritttitel'),
+      'Noch ungespeichert',
+    );
+    await tester.tap(find.byTooltip('Schülerpaket exportieren'));
+    await tester.pumpAndSettle();
+    expect(folderRequests, 1);
+    expect(find.text('Ungespeichert'), findsOneWidget);
+    expect(
+      find.widgetWithText(TextField, 'Noch ungespeichert'),
+      findsOneWidget,
+    );
+    expect(find.byType(MaterialBanner), findsNothing);
+    expect(
+      tester
+          .widget<IconButton>(
+            find.byWidgetPredicate(
+              (widget) =>
+                  widget is IconButton &&
+                  widget.tooltip == 'Schülerpaket exportieren',
+            ),
+          )
+          .onPressed,
+      isNotNull,
+    );
+  });
   testWidgets('teachers add, name, reorder and preserve steps across preview', (
     tester,
   ) async {

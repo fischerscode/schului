@@ -18,6 +18,18 @@ selected. Use **Zielsoftware** (gear or the name in the footer):
    **Ziel in Anwendung auswählen**, point at the target and press F8. Esc cancels.
 5. Save a `.schului` file and test it with the play button.
 
+Use **Schülerpaket exportieren** (archive icon) to create a complete student
+folder. Select its parent directory; schului creates a new folder named after
+the unit with `unterricht.schului`, `start-lernen.bat`, the schului runtime and
+its required DLLs/data. Repeated exports create numbered folders. The export
+uses the current editor content, including unsaved edits, without changing the
+original file or its save status. Canceling leaves the editor unchanged.
+
+Distribute the whole exported folder and assign `start-lernen.bat` as the student
+launch path. The target software itself is not included; its configured path
+must exist on the student PCs. The export copies the running schului build,
+so use a release build for distribution.
+
 The picker previews a blue click-through outline. F8 captures the position at
 that key press and inserts the path after confirming unique identity. It does
 not click the application. The selected software must already be open to capture
