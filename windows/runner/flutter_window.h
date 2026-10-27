@@ -1,6 +1,7 @@
 #ifndef RUNNER_FLUTTER_WINDOW_H_
 #define RUNNER_FLUTTER_WINDOW_H_
 #include "win32_window.h"
+#include "target_picker.h"
 #include <flutter/dart_project.h>
 #include <flutter/encodable_value.h>
 #include <flutter/flutter_view_controller.h>
@@ -24,5 +25,6 @@ private:
   std::string role_;
   std::unique_ptr<flutter::FlutterViewController> flutter_controller_;
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> channel_;
+  std::unique_ptr<TargetPicker> target_picker_;
 };
 #endif

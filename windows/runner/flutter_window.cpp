@@ -136,12 +136,14 @@ bool FlutterWindow::OnCreate() {
     });
   }
   if (role_ == "teacher") {
+    target_picker_ = std::make_unique<TargetPicker>(GetHandle(), flutter_controller_->engine()->messenger());
     flutter_controller_->engine()->SetNextFrameCallback([this]() { Show(); });
   }
   flutter_controller_->ForceRedraw();
   return true;
 }
 void FlutterWindow::OnDestroy() {
+  target_picker_.reset();
   if (GetHandle()) {
     KillTimer(GetHandle(), 1);
     UnregisterHotKey(GetHandle(), 1);
@@ -152,6 +154,7 @@ void FlutterWindow::OnDestroy() {
 }
 LRESULT FlutterWindow::MessageHandler(HWND hwnd, UINT message, WPARAM wparam,
                                       LPARAM lparam) noexcept {
+  if (target_picker_ && target_picker_->HandleMessage(message, wparam)) return 0;
   if (message == WM_CLOSE && role_ == "teacher" && channel_) {
     channel_->InvokeMethod("requestClose", nullptr);
     return 0;

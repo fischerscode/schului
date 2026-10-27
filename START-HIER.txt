@@ -12,6 +12,8 @@ Im Editor:
 - Baum: Ziele in Draw erkunden und ihren JSON-Pfad kopieren.
 - Dreieck: die aktuelle Lernumgebung in Draw starten.
 - Text anklicken: bearbeiten oder als interaktiven Begriff verknüpfen.
+- „Ziel in Draw auswählen“: über ein Ziel im geöffneten Draw zeigen, mit F8
+  übernehmen; Esc bricht die Auswahl ab. Der Pfad wird automatisch eingefügt.
 
 LibreOffice muss auf dem Rechner installiert sein. Online-Übungen benötigen
 Internet und Microsoft Edge WebView2. Der gesamte Programmordner muss zusammen

@@ -101,6 +101,19 @@ void main() {
           .writeAsBytes(bytes.buffer.asUint8List());
       image.dispose();
     });
+    await tester.tap(find.textContaining('Mit LibreOffice Draw kannst du'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Interaktiver Begriff'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ziel in Draw auswählen'), findsOneWidget);
+    await tester.runAsync(() async {
+      final image = await render.toImage();
+      final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (bytes == null) fail('Missing dialog PNG');
+      await File('build/visual-review/target-picker.png')
+          .writeAsBytes(bytes.buffer.asUint8List());
+      image.dispose();
+    });
     expect(tester.takeException(), isNull);
   });
 }

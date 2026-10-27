@@ -9,6 +9,7 @@ project(runner LANGUAGES CXX)
 add_executable(${BINARY_NAME} WIN32
   "flutter_window.cpp"
   "desktop_session.cpp"
+  "target_picker.cpp"
   "main.cpp"
   "utils.cpp"
   "win32_window.cpp"
@@ -42,3 +43,11 @@ add_dependencies(${BINARY_NAME} flutter_assemble)
 
 
 target_compile_options(${BINARY_NAME} PRIVATE /utf-8)
+
+# Pure path identity regression tests; opt in without launching desktop apps.
+add_executable(captured_path_test EXCLUDE_FROM_ALL
+  "../../test/windows/captured_path_test.cpp")
+set_target_properties(captured_path_test PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests")
+apply_standard_settings(captured_path_test)
+target_compile_options(captured_path_test PRIVATE /utf-8)
