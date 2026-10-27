@@ -12,6 +12,7 @@ import 'authoring/lesson_document.dart';
 import 'authoring/lesson_files.dart';
 import 'authoring/teacher_view.dart';
 import 'src/schulzeug_theme.dart';
+import 'src/about_dialog.dart';
 import 'authoring/target_application.dart';
 import 'authoring/application_settings.dart';
 export 'src/windows_bridge.dart' show bridge;
@@ -237,10 +238,7 @@ class _SessionViewState extends State<SessionView> {
                   PopupMenuButton<String>(
                     tooltip: 'Lernumgebung',
                     onSelected: (action) => switch (action) {
-                      'about' => showAboutDialog(
-                        context: context,
-                        applicationName: 'schului',
-                      ),
+                      'about' => showSchuluiAboutDialog(context),
                       _ => command(action),
                     },
                     itemBuilder: (_) => const [

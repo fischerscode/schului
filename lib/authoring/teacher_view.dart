@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import '../lessons/lesson_content.dart';
 import '../lessons/lesson_model.dart';
 import '../src/windows_bridge.dart';
+import '../src/about_dialog.dart';
 import 'lesson_document.dart';
 import 'lesson_files.dart';
 import 'student_package.dart';
@@ -615,6 +616,11 @@ class _TeacherViewState extends State<TeacherView> {
                         : 'Lernumgebung starten',
                     onPressed: running || busy ? null : run,
                     icon: const Icon(Icons.play_arrow_outlined),
+                  ),
+                  action(
+                    Icons.info_outline,
+                    'Über dieses Programm',
+                    () => showSchuluiAboutDialog(context),
                   ),
                 ],
               ),

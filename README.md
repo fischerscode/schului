@@ -94,6 +94,17 @@ is insufficient. `schului.exe` opens the general editor. The included
 `start-inspector.cmd path-to-unit.schului` opens the inspector for that unit.
 Embedded HTTPS activities require internet access and Edge WebView2.
 
+## About and legal information
+
+The teacher's info icon and the learner's **Über dieses Programm** menu open the
+same dialog. Version/build are read from the installed application's metadata;
+the repository link opens in the default browser only when clicked. The imprint
+and privacy statement are bundled under `assets/legal/`, remain readable offline
+and are included in portable builds and exported student packages. The address
+comes from the owner's [stickyurl imprint](https://github.com/fischerscode/stickyurl/blob/main/impressum.html);
+the privacy text describes schului's local files, UIA inspection, diagnostics and
+external WebView2 pages. Keep these texts aligned with future data-processing changes.
+
 ## CI and releases
 
 GitHub Actions runs the Windows checks on pushes to `main`, pull requests and

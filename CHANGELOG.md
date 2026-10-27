@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Show the actual app version/build, GitHub link and offline imprint/privacy
+  information in the shared teacher and learner About dialog.
 - Add GitHub Actions checks for formatting, analysis, Flutter/native tests and
   Windows builds; attach portable ZIPs and SHA-256 checksums to published releases.
 - Show arbitrary HTTPS pages with teacher-authored button labels, window titles

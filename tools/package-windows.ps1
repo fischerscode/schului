@@ -14,7 +14,7 @@ try {
         if ($LASTEXITCODE -ne 0) { throw 'Windows build failed.' }
     }
     $releaseDirectory = Join-Path $projectRoot 'build/windows/x64/runner/Release'
-    foreach ($name in @('schului.exe', 'flutter_windows.dll', 'file_selector_windows_plugin.dll', 'webview_windows_plugin.dll', 'WebView2Loader.dll', 'data/icudtl.dat', 'data/app.so', 'data/flutter_assets')) {
+    foreach ($name in @('schului.exe', 'flutter_windows.dll', 'file_selector_windows_plugin.dll', 'url_launcher_windows_plugin.dll', 'webview_windows_plugin.dll', 'WebView2Loader.dll', 'data/icudtl.dat', 'data/app.so', 'data/flutter_assets', 'data/flutter_assets/assets/legal/impressum.txt', 'data/flutter_assets/assets/legal/datenschutz.txt')) {
         if (-not (Test-Path -LiteralPath (Join-Path $releaseDirectory $name))) {
             throw "Release file missing: $name. Run fvm flutter build windows --release."
         }
@@ -73,7 +73,7 @@ try {
     $zip = [System.IO.Compression.ZipFile]::OpenRead($archivePath)
     try {
         $entries = @($zip.Entries | ForEach-Object { $_.FullName.Replace('\', '/') })
-        foreach ($name in @('schului.exe', 'flutter_windows.dll', 'file_selector_windows_plugin.dll', 'webview_windows_plugin.dll', 'WebView2Loader.dll', 'msvcp140.dll', 'vcruntime140.dll', 'vcruntime140_1.dll', 'data/icudtl.dat', 'data/app.so', 'data/flutter_assets/AssetManifest.bin', 'start-lernen.bat', 'start-inspector.cmd', 'LICENSE', 'START-HIER.txt')) {
+        foreach ($name in @('schului.exe', 'flutter_windows.dll', 'file_selector_windows_plugin.dll', 'url_launcher_windows_plugin.dll', 'webview_windows_plugin.dll', 'WebView2Loader.dll', 'msvcp140.dll', 'vcruntime140.dll', 'vcruntime140_1.dll', 'data/icudtl.dat', 'data/app.so', 'data/flutter_assets/AssetManifest.bin', 'data/flutter_assets/assets/legal/impressum.txt', 'data/flutter_assets/assets/legal/datenschutz.txt', 'start-lernen.bat', 'start-inspector.cmd', 'LICENSE', 'START-HIER.txt')) {
             if ($entries -notcontains "$PackageName/$name") { throw "ZIP entry missing: $name" }
         }
     } finally {

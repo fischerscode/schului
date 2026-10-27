@@ -1,0 +1,63 @@
+Datenschutzerklärung für schului
+Stand: 27. Oktober 2026
+
+1. Verantwortlicher und Anwendungsbereich
+
+Maximilian Fischer
+c/o Federsitz
+Marcel Schütte
+Graefenhainweg 7A
+30519 Hannover
+Deutschland
+E-Mail: contact@maaeps.de
+
+Diese Hinweise beschreiben die bereitgestellte Windows-Anwendung schului. Für den Einsatz im Unterricht, die Auswahl von Unterrichtsinhalten und Webseiten sowie die Verarbeitung personenbezogener Daten durch eine Schule oder andere Einrichtung ist die jeweils einsetzende Stelle verantwortlich. Deren ergänzende Datenschutzhinweise gelten ebenfalls. Die Anbieter eingebundener Webseiten verarbeiten Daten nach ihren eigenen Datenschutzbestimmungen.
+
+2. Lokale Verarbeitung und Unterrichtsdateien
+
+schului erstellt und öffnet Unterrichtseinheiten auf dem jeweiligen Rechner. Texte, Arbeitsaufträge, Hinweise, Webseitenadressen, Zielpfade für Bedienelemente, Programmpfade und Startargumente werden in den gewählten .schului-Dateien gespeichert. Schülerpakete enthalten eine Kopie der exportierten Unterrichtseinheit. Enthalten diese Inhalte personenbezogene Angaben, werden diese beim Speichern und Verteilen mit übernommen. Speicherort, Empfänger und Aufbewahrungsdauer bestimmt die Person oder Einrichtung, die die Dateien verwaltet. Bei Speicherorten auf Netzlaufwerken oder in synchronisierten Ordnern können die dafür eingesetzten Dienste Daten erhalten.
+
+Die Anwendung benötigt kein schului-Benutzerkonto. schului betreibt für diese Funktionen keinen eigenen Server und übermittelt Unterrichtsdateien oder erkannte Bedienelemente nicht automatisch an den Entwickler. Die Anwendung enthält keine eigenen Analyse-, Werbe- oder Trackingdienste und keine automatische Lernfortschrittsauswertung. Dies gilt nicht für die eigenständigen Datenverarbeitungen auf eingebundenen Webseiten oder in der Zielsoftware.
+
+3. Zielsoftware und Windows UI Automation
+
+Für die Fensterwahl und Verbindung zur Zielsoftware verarbeitet schului lokal insbesondere Programmpfade, Fensterklassen, Fenstertitel und Prozesskennungen. Zum Erfassen und Markieren von Zielen liest die Anwendung über Windows UI Automation die von der Zielsoftware bereitgestellten Elementnamen, Elementtypen, Hierarchie und Bildschirmpositionen. Abhängig von der Zielsoftware können Elementnamen und Fenstertitel personenbezogene Angaben oder Dokumentinhalte enthalten.
+
+Die laufende Erkennung wird im Arbeitsspeicher verarbeitet. Bewusst erfasste Zielpfade werden mit dem Unterricht gespeichert. Die Zielsoftware selbst kann unabhängig davon weitere Daten verarbeiten; dafür gelten deren Datenschutzinformationen und die Vorgaben der einsetzenden Einrichtung.
+
+4. Temporäre Dateien und Diagnoseexporte
+
+Beim Start einer Vorschau aus dem Editor wird eine Kopie der Unterrichtseinheit im temporären Benutzerverzeichnis in einem Ordner mit dem Präfix schului-preview- abgelegt. Nach dem Ende der gestarteten Sitzung versucht schului, diese Kopie zu löschen. Bei einem Absturz oder abgebrochenen Prozess können Reste zurückbleiben.
+
+Beim Speichern werden vorübergehend Dateien mit der Endung .tmp neben der Zieldatei angelegt. Beim Schülerpaket-Export entstehen vorübergehend Ordner mit dem Präfix .schului-export- im gewählten Zielverzeichnis. Diese Arbeitskopien werden im normalen Ablauf ersetzt oder entfernt; bei einem Absturz können sie zurückbleiben und sollten bei Bedarf durch die verwaltende Person gelöscht werden.
+
+Diagnoseexporte werden nur durch eine entsprechende Aktion ausgelöst. accessibility-tree.txt kann Elementnamen, Hierarchie und Positionen enthalten. connection-diagnostics.txt kann Fenster- und Programminformationen, Prozesskennungen und technische Fehlerangaben enthalten. Die Dateien werden im Programmordner oder, bei der Verbindungsdiagnose als Ausweichort, im temporären Benutzerverzeichnis als schului-connection-<Prozesskennung>.txt gespeichert. Sie werden nicht automatisch versendet und bleiben bis zur Löschung erhalten. Prüfe sie vor einer Weitergabe auf personenbezogene oder vertrauliche Inhalte.
+
+5. Webseiten und Microsoft Edge WebView2
+
+Eine in der Unterrichtseinheit hinterlegte Webseite wird nach dem Öffnen des entsprechenden Buttons über Microsoft Edge WebView2 geladen. Dabei werden Verbindungen zum jeweiligen Seitenanbieter und gegebenenfalls zu weiteren von ihm eingebundenen Diensten hergestellt. Übertragen werden können insbesondere IP-Adresse, angeforderte Adresse, Zeitpunkt des Abrufs, Browser- und Geräteinformationen sowie auf der Webseite eingegebene Daten. Welche weiteren Daten verarbeitet werden, hängt von der gewählten Webseite ab. schului ersetzt keine erforderlichen Einwilligungen oder Datenschutzinformationen des Seitenanbieters.
+
+WebView2 kann Cookies, Cache, lokalen Webspeicher und Anmeldedaten auf dem Rechner speichern. Das verwendete Plugin legt das Browserprofil standardmäßig unter %LOCALAPPDATA%\flutter_webview_windows\schului ab. Diese Daten werden beim Schließen des Webseitenfensters oder der Anwendung nicht automatisch gelöscht. Nach dem vollständigen Beenden von schului kann das Profil bei Bedarf über die Dateiverwaltung gelöscht werden; dadurch gehen auch dort gespeicherte Web-Anmeldungen und Einstellungen verloren. Für gemeinsam genutzte Schulgeräte sollte die zuständige Administration die Aufbewahrung und Bereinigung regeln.
+
+Für die WebView2-Laufzeit können außerdem Microsofts Datenschutzbestimmungen und die Einstellungen des Geräts gelten. Informationen:
+https://privacy.microsoft.com/de-de/privacystatement
+https://learn.microsoft.com/de-de/microsoft-edge/webview2/concepts/user-data-folder
+
+6. GitHub und externe Links
+
+Der GitHub-Link im About-Dialog öffnet das Repository erst nach Betätigung im Standardbrowser. Dabei gelten die Datenschutzbestimmungen von GitHub und gegebenenfalls die Einstellungen des Browsers. GitHub kann unter anderem Verbindungsdaten und bei einer Anmeldung Kontodaten verarbeiten. Der About-Dialog, die Versionsanzeige, das Impressum und diese Datenschutzerklärung benötigen selbst keine Verbindung zu GitHub. Die Rechtstexte sind lokal mitgeliefert.
+
+Weitere Informationen:
+https://docs.github.com/de/site-policy/privacy-policies/github-general-privacy-statement
+
+7. Kontaktaufnahme, Zwecke und Rechtsgrundlagen
+
+Bei einer Kontaktaufnahme per E-Mail verarbeitet der Verantwortliche die mitgeteilten Kontaktdaten und Inhalte zur Bearbeitung der Anfrage. Rechtsgrundlage ist Art. 6 Abs. 1 Buchst. f DSGVO; das berechtigte Interesse ist die Beantwortung und Bearbeitung eingehender Anfragen. Die Daten werden nur so lange aufbewahrt, wie es für diesen Zweck und gegebenenfalls gesetzliche Aufbewahrungspflichten erforderlich ist. Anfragen erfordern nur die Angaben, die zur Beantwortung benötigt werden.
+
+Die Rechtsgrundlage für personenbezogene Daten im schulischen Einsatz legt die verantwortliche Einrichtung nach dem für sie geltenden Recht fest, beispielsweise Art. 6 Abs. 1 Buchst. e DSGVO in Verbindung mit dem einschlägigen Schulrecht. Eine Nutzung der Software ist für sich genommen keine Einwilligung in Datenverarbeitungen von Drittanbietern. Bei externen Webseiten sind auch mögliche Empfänger und Übermittlungen in Drittländer anhand der jeweiligen Anbieterinformationen zu prüfen.
+
+8. Speicherdauer, Löschung und deine Rechte
+
+Lokal gespeicherte Unterrichtsdateien, Exporte und Diagnoseberichte bleiben grundsätzlich erhalten, bis sie von der verwaltenden Person oder Einrichtung gelöscht werden. WebView2-Profildaten können unabhängig davon fortbestehen. Auf Daten, die ausschließlich auf deinem Gerät oder bei deiner Einrichtung gespeichert sind, hat der Entwickler keinen automatischen Zugriff. Wende dich für diese Daten zunächst an die Person oder Stelle, die das Gerät beziehungsweise die Dateien verwaltet.
+
+Soweit personenbezogene Daten verarbeitet werden und die gesetzlichen Voraussetzungen vorliegen, bestehen insbesondere Rechte auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung und Datenübertragbarkeit sowie ein Widerspruchsrecht. Eine erteilte Einwilligung kann für die Zukunft widerrufen werden. Du kannst dich bei einer zuständigen Datenschutzaufsichtsbehörde beschweren. Für Daten, die der oben genannte Verantwortliche verarbeitet, kannst du dich an contact@maaeps.de wenden; für schulische Verarbeitungen an die verantwortliche Einrichtung und gegebenenfalls deren Datenschutzbeauftragte.

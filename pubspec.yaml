@@ -10,6 +10,8 @@ dependencies:
   file_selector: ^1.1.0
   flutter:
     sdk: flutter
+  package_info_plus: ^10.2.2
+  url_launcher: ^6.3.3
   webview_windows: 0.4.0
 
 dev_dependencies:
@@ -22,6 +24,7 @@ flutter:
   uses-material-design: true
   assets:
     - LICENSE
+    - assets/legal/
 
 melos:
   sdkPath: .fvm/flutter_sdk
