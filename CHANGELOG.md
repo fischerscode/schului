@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Keep the learner/inspector main window available in the taskbar and window
+  switcher, including while several candidate application windows await selection.
+
 - Select arbitrary Windows target software from running windows or an executable.
   Store startup arguments and window filters in each unit, and capture generic
   UIA targets without Draw-specific path adaptations.

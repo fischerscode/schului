@@ -278,7 +278,9 @@ void DesktopSession::Register(const std::string &role, HWND hwnd) {
     SetWindowLongPtr(hwnd, GWL_STYLE, WS_POPUP | WS_CLIPCHILDREN | WS_BORDER);
     SetWindowLongPtr(hwnd, GWLP_HWNDPARENT, reinterpret_cast<LONG_PTR>(lesson_));
   }
-  LONG_PTR ex = WS_EX_TOOLWINDOW;
+  // The lesson/inspector is a primary app window. Keep it reachable through
+  // the taskbar and Alt+Tab, including while waiting for a target window.
+  LONG_PTR ex = role == "lesson" ? WS_EX_APPWINDOW : WS_EX_TOOLWINDOW;
   if (role == "overlay") {
     ex |= WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE;
     SetWindowLongPtr(hwnd, GWL_EXSTYLE, ex);

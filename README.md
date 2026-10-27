@@ -94,10 +94,24 @@ $nativeCmake = (Select-String -Path build/windows/x64/CMakeCache.txt -Pattern '^
 .\build\windows\x64\tests\Release\application_config_test.exe
 ```
 
-Live desktop acceptance is still pending: Computer Use previously failed with
-`GetCursorPos: access denied`. Compilation and rendered widgets do not verify
-native click-through, screen geometry, native dialogs or compatibility with every
-application. Test the teacher-to-learner flow on actual school PCs, including
+Live Notepad authoring was exercised on 2026-10-27 with Windows Notepad
+11.2607.14.0: create a unit, select the running Notepad window, capture its actual
+File menu by mouse/F8, insert the exact UIA path, save through the native dialog,
+restart the teacher editor and reopen the saved unit. These steps passed.
+The picker visibly outlined the File menu without opening it. The saved file is
+`build/notepad-e2e.schului` (machine-specific test data, excluded from Git).
+
+The test exposed the learner window's tool-window style; it now uses a primary
+app-window style and is discoverable while waiting for window selection. The
+runtime started and correctly reported multiple matching Notepad windows.
+The final window-selection and learner-hover checks remain pending: Computer
+Use lost desktop access with `GetCursorPos: access denied`. Normal key presses
+worked in Flutter fields, while automated text injection/Ctrl+A did not;
+native file-dialog text input did work. This is an automation observation, not a
+verified diagnosis of physical-keyboard behavior.
+
+Compilation and rendered widgets alone do not establish native click-through,
+geometry or compatibility with every app. Repeat on school PCs, including
 100/125/150% DPI, F8/Esc, multiple windows and unsaved work.
 
 ## Application compatibility
