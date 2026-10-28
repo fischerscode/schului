@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Replace the Flutter placeholder with an original SchulUI app icon, including
+  Windows icon sizes from 16 through 256 px and an editable SVG source.
 - Use smaller, regular-weight inactive task titles so active instructions
   remain visually dominant.
 - Show only titles for inactive learner tasks; remove section numbers and the
