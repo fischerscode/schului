@@ -84,21 +84,6 @@ class _LessonContentState extends State<LessonContent> {
     });
   }
 
-  String preview(LessonStep step) => step.content
-      .map(
-        (block) => switch (block) {
-          LessonParagraph() => block.spans.map((span) => span.text).join(),
-          LessonBulletList() =>
-            block.items
-                .map((item) => item.spans.map((span) => span.text).join())
-                .join(' '),
-          LessonActivity() => block.label,
-        },
-      )
-      .join(' ')
-      .replaceAll(RegExp(r'\s+'), ' ')
-      .trim();
-
   Widget section(int index) {
     final theme = Theme.of(context);
     final step = widget.lessons[index];
@@ -107,36 +92,6 @@ class _LessonContentState extends State<LessonContent> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(
-          children: [
-            Text(
-              '${index + 1}'.padLeft(2, '0'),
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: active
-                    ? theme.colorScheme.primary
-                    : theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(width: 12),
-            if (active)
-              Expanded(
-                child: Text(
-                  'Aktuelle Aufgabe',
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-              ),
-            if (!active) const Spacer(),
-            Icon(
-              active ? Icons.radio_button_checked : Icons.chevron_right,
-              color: active
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.onSurfaceVariant,
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
         Semantics(
           header: active,
           child: Text(
@@ -159,16 +114,6 @@ class _LessonContentState extends State<LessonContent> {
               padding: const EdgeInsets.only(bottom: 16),
               child: block(item),
             ),
-        ] else if (preview(step).isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Text(
-            preview(step),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
         ],
       ],
     );

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Show only titles for inactive learner tasks; remove section numbers and the
+  redundant active-task label.
+
 - Focus the learner view on one active task with more padding and muted previews;
   switch explicitly by click, keyboard or navigation, centering fitting tasks
   while aligning long tasks at the top. Keep the session menu beside the title.

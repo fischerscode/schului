@@ -71,9 +71,9 @@ Use quotes around paths containing spaces. Learner menus offer reconnect, exit
 and application information. The teacher editor provides **Ziele erkunden** for
 inspection and diagnostics.
 
-Learners see one full active task with generous padding; other numbered tasks
-remain available as muted, readable previews. Click a preview, activate it by
-keyboard or use the bottom arrows to switch tasks. Scrolling does not change
+Learners see one full active task with generous padding; other tasks
+remain available as muted titles without content previews or numbering. Click a
+title, activate it by keyboard or use the bottom arrows to switch tasks. Scrolling does not change
 the active task. Activation centers a task when it fits and surrounding content
 allows; longer tasks align at the top and remain fully scrollable. The bottom
 bar shows the active position (not completion) and offers authored tips. Only

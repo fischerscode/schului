@@ -271,8 +271,12 @@ void main() {
           ),
         ),
       );
-      expect(find.text('Aktuelle Aufgabe'), findsOneWidget);
+      expect(find.text('Aktuelle Aufgabe'), findsNothing);
+      expect(find.text('01'), findsNothing);
+      expect(find.text('02'), findsNothing);
       expect(find.text('Speichern'), findsNothing);
+      expect(find.text('Lies deinen Text.'), findsNothing);
+      expect(find.text('Lückentext öffnen'), findsNothing);
       expect(find.byType(OutlinedButton), findsNothing);
       final scroll = tester
           .widget<SingleChildScrollView>(find.byType(SingleChildScrollView))
@@ -286,7 +290,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(selected, [1]);
       expect(find.text('Speichern'), findsOneWidget);
-      expect(find.text('Aktuelle Aufgabe'), findsOneWidget);
+      expect(find.text('Aktuelle Aufgabe'), findsNothing);
+      expect(find.text('01'), findsNothing);
+      expect(find.text('02'), findsNothing);
       await tester.ensureVisible(find.text('Abschluss'));
       Focus.of(tester.element(find.text('Abschluss'))).requestFocus();
       await tester.pump();
