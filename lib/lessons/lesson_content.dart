@@ -99,8 +99,9 @@ class _LessonContentState extends State<LessonContent> {
             style:
                 (active
                         ? theme.textTheme.titleLarge
-                        : theme.textTheme.titleMedium)
+                        : theme.textTheme.bodyMedium)
                     ?.copyWith(
+                      fontWeight: active ? FontWeight.w600 : FontWeight.w400,
                       color: active
                           ? theme.colorScheme.onSurface
                           : theme.colorScheme.onSurfaceVariant,

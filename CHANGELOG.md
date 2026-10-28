@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Use smaller, regular-weight inactive task titles so active instructions
+  remain visually dominant.
 - Show only titles for inactive learner tasks; remove section numbers and the
   redundant active-task label.
 
