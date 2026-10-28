@@ -121,8 +121,21 @@ GitHub Actions runs the Windows checks on pushes to `main`, pull requests and
 manual CI runs: pinned FVM/Flutter setup, locked dependencies, formatting,
 analysis, Flutter tests, a native release build and both C++ regression tests.
 
-To distribute a new version, update the package version/changelog and publish a
-GitHub Release for the intended tag. Publishing also triggers for prereleases.
+To prepare a version, start from a clean working tree and run:
+
+```powershell
+fvm dart run melos version
+```
+
+Melos derives the version from Conventional Commits, updates the package
+changelog with linked commit IDs, creates a local release commit/tag, and prints
+a GitHub release creation link prefilled with the tag, title and release notes.
+`publish_to: none`
+keeps this desktop app off pub.dev; `versionPrivatePackages` still versions it.
+
+Push the generated commit and tag when ready, then open the printed link and
+publish the GitHub Release. The link does not publish anything automatically.
+Publishing also triggers for prereleases.
 The release workflow checks and builds that tag again, then attaches:
 
 - `schului-windows-x64.zip`: the complete portable application, license,
@@ -168,7 +181,10 @@ fvm flutter run -d windows
 
 Visual Studio's Desktop development with C++ workload is needed for native builds.
 Flutter is pinned in `.fvmrc`; application dependencies are locked. Melos provides
-repeatable checks and private-package versioning without an aggregate changelog.
+repeatable checks and application versioning without an aggregate changelog.
+Let Melos prepend version sections to `CHANGELOG.md`; avoid adding a file title
+or a parallel `Unreleased` section that would move below the next release.
+Review the generated notes before publishing.
 
 Automated checks cover software selection, settings retention during edits, file
 round trips, exact paths, picker insertion/cancellation, invalid input, narrow
@@ -267,12 +283,9 @@ versions and malformed content are rejected. Inspectable JSON fits this initial
 interchange workflow; FlatBuffers and Drift are not introduced without a binary
 or relational persistence requirement.
 
-## Sources and conventions
+## Conventions
 
-- Engineering: `//wsl.localhost/Ubuntu/home/maximilian/dev/engineering_guidelines`,
-  revision `e22679bdc13a68368e0be41df443d27530fb5bb3`.
-- Design: `//wsl.localhost/Ubuntu/home/maximilian/dev/schulzeug_design`, revision
-  `5e18fe67b88f17661d84ba5286aa0033ea6152d1`.
-
-These source repositories remain independent and unchanged. See AGENTS.md for
-the canonical specifications and package CHANGELOG.md for format compatibility.
+Use the pinned FVM SDK and the checks above. Follow Conventional Commits so
+Melos can determine version changes and generate this package's changelog.
+The shared UI tokens live in `lib/src/schulzeug_theme.dart`; keep teacher tools
+and learner tasks separate, with minimal chrome around the target application.

@@ -1,5 +1,6 @@
 name: schului
 description: "Lernumgebungen unter Windows erstellen und interaktiv in echten Anwendungen lernen."
+repository: https://github.com/fischerscode/schului
 publish_to: none
 version: 0.2.0+2
 
@@ -33,6 +34,9 @@ melos:
     version:
       workspaceChangelog: false
       versionPrivatePackages: true
+      releaseUrl: true
+      includeCommitId: true
+      linkToCommits: true
   scripts:
     format: fvm dart format --output=none --set-exit-if-changed lib test
     analyze: fvm flutter analyze
